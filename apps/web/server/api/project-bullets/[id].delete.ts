@@ -1,3 +1,4 @@
+import { deleteEmbeddingJobsBySource } from "~/server/services/embeddings/queue";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
@@ -26,6 +27,8 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createAppError(500, "Failed to delete project bullet.", { cause: error.message });
   }
+
+  await deleteEmbeddingJobsBySource(event, "project_bullet", [bulletId || ""]);
 
   return { ok: true };
 });

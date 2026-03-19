@@ -1,3 +1,8 @@
+import { buildEmbeddingInput } from "~/server/services/embeddings/generator";
+import {
+  deleteEmbeddingJobsBySource,
+  enqueueEmbeddingJob,
+} from "~/server/services/embeddings/queue";
 import { parseVacancyText } from "~/server/services/parser/vacancy-parser";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile, requireUser } from "~/server/utils/auth";
@@ -21,6 +26,11 @@ export default defineEventHandler(async (event) => {
   if (vacancyError || !vacancy) {
     throw createAppError(404, "Vacancy not found.");
   }
+
+  const { data: existingRequirements } = await supabase
+    .from("vacancy_requirements")
+    .select("id")
+    .eq("vacancy_id", vacancyId);
 
   const parsed = await parseVacancyText(event, user.id, vacancy.raw_text);
   const requirementRows = [
@@ -53,16 +63,32 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  await deleteEmbeddingJobsBySource(
+    event,
+    "vacancy_requirement",
+    (existingRequirements || []).map((requirement) => requirement.id),
+  );
   await supabase.from("vacancy_requirements").delete().eq("vacancy_id", vacancyId);
 
   if (requirementRows.length) {
-    const { error: requirementError } = await supabase
+    const { data: insertedRequirements, error: requirementError } = await supabase
       .from("vacancy_requirements")
-      .insert(requirementRows);
+      .insert(requirementRows)
+      .select("*");
 
     if (requirementError) {
       throw createAppError(500, "Failed to store vacancy requirements.", {
         cause: requirementError.message,
+      });
+    }
+
+    for (const requirement of insertedRequirements || []) {
+      await enqueueEmbeddingJob({
+        event,
+        profileId: profile.id,
+        sourceType: "vacancy_requirement",
+        sourceId: requirement.id,
+        inputText: buildEmbeddingInput(requirement.label, [requirement.normalized_label || ""]),
       });
     }
   }

@@ -21,9 +21,28 @@ services:
       PDF_STORAGE_BUCKET: ${PDF_STORAGE_BUCKET:-resumes}
       PDF_BASE_PATH: ${PDF_BASE_PATH:-exports}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      INTERNAL_WORKER_TOKEN: ${INTERNAL_WORKER_TOKEN}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((response) => { if (!response.ok) throw new Error('unhealthy') }).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  worker:
+    image: hr-match-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      INTERNAL_WORKER_TOKEN: ${INTERNAL_WORKER_TOKEN}
+      EMBEDDING_WORKER_INTERVAL_SECONDS: ${EMBEDDING_WORKER_INTERVAL_SECONDS:-15}
+    command:
+      [
+        "sh",
+        "-c",
+        "while true; do node -e \"fetch('http://app:3000/api/internal/embeddings/run',{method:'POST',headers:{'x-worker-token':process.env.INTERNAL_WORKER_TOKEN||''}}).then(async (response)=>{const body=await response.text(); if(!response.ok){console.error(body)} else {console.log(body)}}).catch((error)=>{console.error(error)})\"; sleep ${EMBEDDING_WORKER_INTERVAL_SECONDS:-15}; done"
+      ]

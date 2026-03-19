@@ -8,12 +8,16 @@ const {
   enforceRateLimitMock,
   parseVacancyTextMock,
   createSupabaseServerClientMock,
+  enqueueEmbeddingJobMock,
+  deleteEmbeddingJobsBySourceMock,
 } = vi.hoisted(() => ({
   requireUserMock: vi.fn(),
   requireProfileMock: vi.fn(),
   enforceRateLimitMock: vi.fn(),
   parseVacancyTextMock: vi.fn(),
   createSupabaseServerClientMock: vi.fn(),
+  enqueueEmbeddingJobMock: vi.fn(),
+  deleteEmbeddingJobsBySourceMock: vi.fn(),
 }));
 
 vi.mock("~/server/utils/auth", () => ({
@@ -27,6 +31,11 @@ vi.mock("~/server/utils/rate-limit", () => ({
 
 vi.mock("~/server/services/parser/vacancy-parser", () => ({
   parseVacancyText: parseVacancyTextMock,
+}));
+
+vi.mock("~/server/services/embeddings/queue", () => ({
+  enqueueEmbeddingJob: enqueueEmbeddingJobMock,
+  deleteEmbeddingJobsBySource: deleteEmbeddingJobsBySourceMock,
 }));
 
 vi.mock("~/server/services/supabase/server", () => ({
@@ -82,6 +91,16 @@ function createVacancyParseSupabaseMock(
 
       if (table === "vacancy_requirements") {
         return {
+          select() {
+            return {
+              eq() {
+                return Promise.resolve({
+                  data: [],
+                  error: null,
+                });
+              },
+            };
+          },
           delete() {
             return {
               eq(_field: string, value: string) {
@@ -94,9 +113,18 @@ function createVacancyParseSupabaseMock(
           },
           insert(rows: VacancyRequirementRecord[]) {
             state.insertedRequirements = rows;
-            return Promise.resolve({
-              error: null,
-            });
+            return {
+              select() {
+                return Promise.resolve({
+                  data: rows.map((row, index) => ({
+                    ...row,
+                    id: `requirement-${index + 1}`,
+                    normalized_label: row.normalized_label || row.label.toLowerCase(),
+                  })),
+                  error: null,
+                });
+              },
+            };
           },
         };
       }

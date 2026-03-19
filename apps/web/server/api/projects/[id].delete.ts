@@ -1,3 +1,4 @@
+import { deleteEmbeddingJobsBySource } from "~/server/services/embeddings/queue";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
@@ -17,6 +18,12 @@ export default defineEventHandler(async (event) => {
     throw createAppError(404, "Project not found.");
   }
 
+  const { data: projectBullets } = await supabase
+    .from("project_bullets")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("profile_id", profile.id);
+
   const { error } = await supabase
     .from("projects")
     .delete()
@@ -26,6 +33,12 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createAppError(500, "Failed to delete project.", { cause: error.message });
   }
+
+  await deleteEmbeddingJobsBySource(
+    event,
+    "project_bullet",
+    (projectBullets || []).map((bullet) => bullet.id),
+  );
 
   return { ok: true };
 });

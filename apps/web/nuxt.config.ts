@@ -17,6 +17,7 @@ export default defineNuxtConfig({
     novitaModel: process.env.NOVITA_MODEL || "google/gemma-3-12b-it",
     pdfStorageBucket: process.env.PDF_STORAGE_BUCKET || "resumes",
     pdfBasePath: process.env.PDF_BASE_PATH || "exports",
+    internalWorkerToken: process.env.INTERNAL_WORKER_TOKEN || process.env.NUXT_SESSION_SECRET || "",
     public: {
       appUrl: process.env.NUXT_PUBLIC_APP_URL || "http://localhost:3000",
       supabaseUrl: process.env.SUPABASE_URL || "",

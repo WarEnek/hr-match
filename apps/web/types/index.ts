@@ -5,6 +5,7 @@ export type RequirementType =
   | "domain"
   | "soft_signal";
 export type EvidenceSourceType = "experience_bullet" | "project_bullet" | "skill";
+export type EmbeddingSourceType = "experience_bullet" | "project_bullet" | "vacancy_requirement";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
@@ -141,6 +142,21 @@ export interface AiSettingsRecord {
   api_key_encrypted: string | null;
   temperature: number;
   max_tokens: number;
+}
+
+export interface EmbeddingJobRecord {
+  id: string;
+  profile_id: string;
+  source_type: EmbeddingSourceType;
+  source_id: string;
+  input_text: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  attempt_count: number;
+  last_error: string | null;
+  locked_at: string | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface VacancyParseResult {
