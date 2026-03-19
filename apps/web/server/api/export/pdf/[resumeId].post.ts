@@ -1,4 +1,5 @@
 import { exportResumeToPdf } from "~/server/services/pdf/export";
+import { createResumePdfSignedUrl } from "~/server/services/pdf/storage";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile, requireUser } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
@@ -37,6 +38,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const { pdfPath } = await exportResumeToPdf(event, resumeId, user.id);
+    const pdfUrl = await createResumePdfSignedUrl(pdfPath);
     await supabase
       .from("resume_generations")
       .update({ pdf_path: pdfPath, status: "exported" })
@@ -47,6 +49,7 @@ export default defineEventHandler(async (event) => {
       ok: true,
       jobId: job.id,
       pdfPath,
+      pdfUrl,
     };
   } catch (error) {
     await supabase

@@ -3,7 +3,7 @@ import { computed, ref, watchEffect } from "vue";
 
 import { navigateTo, useFetch, useRoute } from "#imports";
 
-import type { MatchAnalysis, ResumeDocumentTree } from "~/types";
+import type { ExportJobRecord, MatchAnalysis, ResumeDocumentTree } from "~/types";
 
 import { useAuthStore } from "~/stores/auth";
 import { getIncludedTextCount, normalizeResumeDocumentTree } from "~/utils/resume-document";
@@ -32,6 +32,9 @@ const { data, refresh } = await useFetch<{
     score: number;
     reason: string;
   }>;
+  exportJobs: ExportJobRecord[];
+  latestExportJob: ExportJobRecord | null;
+  pdfUrl: string | null;
 }>(`/api/resume/${resumeId}`);
 const exporting = ref(false);
 const saving = ref(false);
@@ -148,6 +151,28 @@ const includedBulletCount = computed(() => {
       <p v-if="notice" class="hint" style="margin-top: 0.75rem">{{ notice }}</p>
     </section>
 
+    <section class="panel">
+      <h2>Export status</h2>
+      <div class="record-meta">
+        <span>Current resume status: {{ data?.resume?.analysis_json ? "ready" : "draft" }}</span>
+        <span>Latest export: {{ data?.latestExportJob?.status || "not started" }}</span>
+      </div>
+      <p v-if="data?.latestExportJob?.error_message" class="status-error">
+        {{ data.latestExportJob.error_message }}
+      </p>
+      <div class="actions" style="margin-top: 1rem">
+        <a
+          v-if="data?.pdfUrl"
+          class="button-secondary"
+          :href="data.pdfUrl"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open latest PDF
+        </a>
+      </div>
+    </section>
+
     <section v-if="analysis" class="metrics-grid">
       <SharedMetricCard label="Overall score" :value="analysis.overall_score" />
       <SharedMetricCard label="Must-have coverage" :value="analysis.must_have_coverage" />
@@ -163,6 +188,33 @@ const includedBulletCount = computed(() => {
           <p class="muted">{{ link.reason }}</p>
         </li>
       </ul>
+    </section>
+
+    <section class="panel" v-if="data?.exportJobs?.length">
+      <h2>Export job history</h2>
+      <div class="record-list">
+        <article v-for="job in data.exportJobs" :key="job.id" class="record-card">
+          <div class="record-header">
+            <strong>Job {{ job.id }}</strong>
+            <span
+              :class="
+                job.status === 'completed'
+                  ? 'status-success'
+                  : job.status === 'failed'
+                    ? 'status-error'
+                    : 'status-warning'
+              "
+            >
+              {{ job.status }}
+            </span>
+          </div>
+          <div class="record-meta">
+            <span>Created: {{ job.created_at }}</span>
+            <span>Updated: {{ job.updated_at }}</span>
+          </div>
+          <p v-if="job.error_message" class="status-error">{{ job.error_message }}</p>
+        </article>
+      </div>
     </section>
 
     <section v-if="documentTree" class="panel">

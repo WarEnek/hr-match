@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { navigateTo, useFetch } from "#imports";
+
+import type { ResumeListItem } from "~/types";
+
+import { useAuthStore } from "~/stores/auth";
+
 const auth = useAuthStore();
 
 if (!auth.initialized) {
@@ -12,7 +18,7 @@ if (!auth.user) {
 const [{ data: profileData }, { data: vacancyData }, { data: resumeData }] = await Promise.all([
   useFetch<{ profile: { full_name?: string } | null }>("/api/profile"),
   useFetch<{ vacancies: Array<{ id: string }> }>("/api/vacancies"),
-  useFetch<{ resumes: Array<{ id: string }> }>("/api/resume"),
+  useFetch<{ resumes: ResumeListItem[] }>("/api/resume"),
 ]);
 </script>
 
@@ -70,6 +76,17 @@ const [{ data: profileData }, { data: vacancyData }, { data: resumeData }] = awa
         <div class="actions">
           <NuxtLink class="button-secondary" to="/resumes">Open history</NuxtLink>
         </div>
+        <ul v-if="resumeData?.resumes?.length" class="unstyled-list" style="margin-top: 1rem">
+          <li v-for="resume in resumeData.resumes.slice(0, 3)" :key="resume.id">
+            <NuxtLink :to="`/resumes/${resume.id}`">
+              <strong>{{ resume.title }}</strong>
+              <p class="muted">
+                Score: {{ resume.score ?? "n/a" }} · Export:
+                {{ resume.latest_export_job?.status || resume.status || "draft" }}
+              </p>
+            </NuxtLink>
+          </li>
+        </ul>
       </div>
     </section>
   </div>

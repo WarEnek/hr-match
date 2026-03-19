@@ -259,4 +259,17 @@ export interface ResumeListItem {
   status?: string;
   score: number | null;
   updated_at?: string;
+  created_at?: string;
+  pdf_path?: string | null;
+  pdf_url?: string | null;
+  latest_export_job?: ExportJobRecord | null;
+}
+
+export interface ExportJobRecord {
+  id: string;
+  resume_generation_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
 }
