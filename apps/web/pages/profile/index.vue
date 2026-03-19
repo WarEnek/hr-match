@@ -135,5 +135,41 @@ async function saveProfile() {
       </div>
       <p v-if="message" class="hint" style="margin-top: 0.75rem">{{ message }}</p>
     </section>
+
+    <section class="page-grid">
+      <article class="panel">
+        <h2>Experience</h2>
+        <p class="muted">Manage employers, dates, stack tags, and evidence bullets.</p>
+        <div class="actions">
+          <NuxtLink class="button-secondary" to="/profile/experience">Open experience</NuxtLink>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>Skills</h2>
+        <p class="muted">Store core skills, levels, and matching keywords.</p>
+        <div class="actions">
+          <NuxtLink class="button-secondary" to="/profile/skills">Open skills</NuxtLink>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>Projects</h2>
+        <p class="muted">Add project evidence with supporting bullets.</p>
+        <div class="actions">
+          <NuxtLink class="button-secondary" to="/profile/projects">Open projects</NuxtLink>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>Certifications</h2>
+        <p class="muted">Track certificates and credential links used in the resume.</p>
+        <div class="actions">
+          <NuxtLink class="button-secondary" to="/profile/certifications">
+            Open certifications
+          </NuxtLink>
+        </div>
+      </article>
+    </section>
   </div>
 </template>

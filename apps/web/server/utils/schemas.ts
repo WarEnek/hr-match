@@ -10,6 +10,40 @@ const nullableTrimmedString = z.union([z.string(), z.null(), z.undefined()]).tra
 });
 
 const stringArray = z.array(z.string().trim().min(1)).default([]);
+const cleanedStringArray = z
+  .array(z.string())
+  .optional()
+  .default([])
+  .transform((values) => values.map((value) => value.trim()).filter(Boolean));
+const nullableNumber = z.preprocess((value) => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return Number(value);
+  }
+
+  return value;
+}, z.number().finite().nullable());
+const nullableDateString = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  },
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+);
 
 export const authSessionSchema = z.object({
   mode: z.enum(["sign_in", "sign_up"]),
@@ -27,6 +61,59 @@ export const profileUpsertSchema = z.object({
   github_url: nullableTrimmedString,
   website_url: nullableTrimmedString,
   summary_default: nullableTrimmedString,
+});
+
+export const skillUpsertSchema = z.object({
+  name: z.string().trim().min(1),
+  category: nullableTrimmedString,
+  years: nullableNumber,
+  level: nullableTrimmedString,
+  keywords: cleanedStringArray,
+});
+
+export const certificationUpsertSchema = z.object({
+  name: z.string().trim().min(1),
+  issuer: nullableTrimmedString,
+  issued_at: nullableDateString,
+  expires_at: nullableDateString,
+  credential_url: nullableTrimmedString,
+});
+
+export const experienceUpsertSchema = z.object({
+  company: z.string().trim().min(1),
+  role_title: z.string().trim().min(1),
+  employment_type: nullableTrimmedString,
+  location: nullableTrimmedString,
+  start_date: nullableDateString,
+  end_date: nullableDateString,
+  is_current: z.boolean(),
+  domain_tags: cleanedStringArray,
+  stack_tags: cleanedStringArray,
+});
+
+export const experienceBulletUpsertSchema = z.object({
+  text_raw: z.string().trim().min(1),
+  text_refined: nullableTrimmedString,
+  tech_tags: cleanedStringArray,
+  domain_tags: cleanedStringArray,
+  result_tags: cleanedStringArray,
+  seniority_tags: cleanedStringArray,
+});
+
+export const projectUpsertSchema = z.object({
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  url: nullableTrimmedString,
+  domain_tags: cleanedStringArray,
+  stack_tags: cleanedStringArray,
+});
+
+export const projectBulletUpsertSchema = z.object({
+  text_raw: z.string().trim().min(1),
+  text_refined: nullableTrimmedString,
+  tech_tags: cleanedStringArray,
+  domain_tags: cleanedStringArray,
+  result_tags: cleanedStringArray,
 });
 
 export const vacancyCreateSchema = z.object({
