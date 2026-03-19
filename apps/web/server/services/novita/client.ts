@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { H3Event } from "h3";
 import type { ZodType } from "zod";
+import type { JsonObject } from "~/types";
 
 import { createAppError } from "~/server/utils/errors";
 import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
@@ -11,7 +12,7 @@ interface StructuredCompletionOptions<T> {
   baseUrl: string;
   model: string;
   schemaName: string;
-  jsonSchema: Record<string, unknown>;
+  jsonSchema: JsonObject;
   validator: ZodType<T>;
   systemPrompt: string;
   userPrompt: string;
@@ -19,7 +20,7 @@ interface StructuredCompletionOptions<T> {
   maxTokens?: number;
 }
 
-function parseJsonPayload(raw: string) {
+function parseJsonPayload(raw: string): unknown {
   try {
     return JSON.parse(raw);
   } catch {

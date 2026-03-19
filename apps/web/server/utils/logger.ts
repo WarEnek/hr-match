@@ -1,8 +1,17 @@
 import type { H3Event } from "h3";
+import type { JsonObject } from "~/types";
 
 type LogLevel = "info" | "warn" | "error";
 
-function serializeMeta(meta?: Record<string, unknown>) {
+export interface RequestLogContext extends JsonObject {
+  requestId: string;
+  userId: string | null;
+  route: string;
+  method: string;
+  latencyMs: number | null;
+}
+
+function serializeMeta(meta?: JsonObject): string {
   if (!meta) {
     return "";
   }
@@ -14,7 +23,7 @@ function serializeMeta(meta?: Record<string, unknown>) {
   }
 }
 
-function log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+function log(level: LogLevel, message: string, meta?: JsonObject): void {
   const line = `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}${serializeMeta(meta)}`;
 
   if (level === "error") {
@@ -30,7 +39,7 @@ function log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
   console.info(line);
 }
 
-export function buildRequestLogContext(event: H3Event, extra?: Record<string, unknown>) {
+export function buildRequestLogContext(event: H3Event, extra?: JsonObject): RequestLogContext {
   return {
     requestId: event.context.requestId || "missing-request-id",
     userId: event.context.userId || null,
@@ -42,13 +51,13 @@ export function buildRequestLogContext(event: H3Event, extra?: Record<string, un
 }
 
 export const appLogger = {
-  info(message: string, meta?: Record<string, unknown>) {
+  info(message: string, meta?: JsonObject): void {
     log("info", message, meta);
   },
-  warn(message: string, meta?: Record<string, unknown>) {
+  warn(message: string, meta?: JsonObject): void {
     log("warn", message, meta);
   },
-  error(message: string, meta?: Record<string, unknown>) {
+  error(message: string, meta?: JsonObject): void {
     log("error", message, meta);
   },
 };

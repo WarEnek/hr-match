@@ -6,6 +6,13 @@ export type RequirementType =
   | "soft_signal";
 export type EvidenceSourceType = "experience_bullet" | "project_bullet" | "skill";
 
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+
+export interface JsonObject {
+  [key: string]: JsonValue | undefined;
+}
+
 export interface ProfileRecord {
   id: string;
   user_id: string;

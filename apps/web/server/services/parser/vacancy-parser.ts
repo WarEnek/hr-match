@@ -11,7 +11,7 @@ export async function parseVacancyText(event: H3Event, userId: string, rawText: 
   const settings = await getResolvedAiSettings(event, userId);
   const prompt = buildVacancyParserPrompt(rawText);
   const attempts = [1, 2];
-  let lastError: unknown = null;
+  let lastError: Error | null = null;
 
   for (const attempt of attempts) {
     try {
@@ -29,7 +29,7 @@ export async function parseVacancyText(event: H3Event, userId: string, rawText: 
         maxTokens: settings.maxTokens,
       });
     } catch (error) {
-      lastError = error;
+      lastError = error instanceof Error ? error : new Error("Unknown error");
       appLogger.warn(
         "Vacancy parser attempt failed.",
         buildRequestLogContext(event, {
@@ -41,6 +41,6 @@ export async function parseVacancyText(event: H3Event, userId: string, rawText: 
   }
 
   throw createAppError(502, "Vacancy parsing failed after retry.", {
-    cause: lastError instanceof Error ? lastError.message : "Unknown error",
+    cause: lastError?.message || "Unknown error",
   });
 }

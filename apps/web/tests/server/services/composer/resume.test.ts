@@ -65,9 +65,6 @@ function createSupabaseMock(tableData: ComposerSupabaseFixture) {
         then<TResult>(resolve: (value: typeof response) => TResult | PromiseLike<TResult>) {
           return Promise.resolve(response).then(resolve);
         },
-        catch<TResult>(reject: (reason: unknown) => TResult | PromiseLike<TResult>) {
-          return Promise.resolve(response).catch(reject);
-        },
         finally(onFinally: () => void) {
           return Promise.resolve(response).finally(onFinally);
         },

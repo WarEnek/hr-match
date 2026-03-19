@@ -1,8 +1,9 @@
 import { flushPromises, mount, type MountingOptions } from "@vue/test-utils";
 import { Suspense, defineComponent, h, type Component } from "vue";
+import type { JsonValue } from "~/types";
 
 interface SuspendedMountOptions {
-  props?: Record<string, unknown>;
+  props?: Record<string, JsonValue | object>;
   global?: MountingOptions<Record<string, never>>["global"];
 }
 
