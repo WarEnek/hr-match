@@ -1,6 +1,18 @@
 import type { H3Event } from "h3";
 
-import type { EvidenceSourceType, MatchAnalysis, MatchEvidence, ResumeDocumentTree } from "~/types";
+import type {
+  CertificationRecord,
+  EvidenceLinkRecord,
+  ExperienceBulletRecord,
+  ExperienceRecord,
+  MatchAnalysis,
+  ProfileRecord,
+  ProjectBulletRecord,
+  ProjectRecord,
+  ResumeDocumentTree,
+  SkillRecord,
+  VacancyRecord,
+} from "~/types";
 
 import { requestStructuredCompletion } from "~/server/services/novita/client";
 import { getResolvedAiSettings } from "~/server/services/novita/settings";
@@ -18,77 +30,11 @@ function formatDateRange(startDate: string | null, endDate: string | null, isCur
   return `${start} - ${end}`;
 }
 
-interface ComposeProfile {
-  id: string;
-  full_name: string;
-  headline: string | null;
-  email: string | null;
-  phone: string | null;
-  location: string | null;
-  linkedin_url: string | null;
-  github_url: string | null;
-  website_url: string | null;
-  summary_default: string | null;
-}
-
-interface ComposeVacancy {
-  id: string;
-  title: string | null;
-  company: string | null;
-}
-
-interface ComposeSkill {
-  id: string;
-  name: string;
-}
-
-interface ComposeExperience {
-  id: string;
-  company: string;
-  role_title: string;
-  location: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  is_current: boolean;
-}
-
-interface ComposeExperienceBullet {
-  id: string;
-  experience_id: string;
-  text_raw: string | null;
-  text_refined: string | null;
-}
-
-interface ComposeProject {
-  id: string;
-  title: string;
-  description: string;
-  url: string | null;
-}
-
-interface ComposeProjectBullet {
-  id: string;
-  project_id: string;
-  text_raw: string | null;
-  text_refined: string | null;
-}
-
-interface ComposeCertification {
-  id: string;
-  name: string;
-  issuer: string | null;
-  issued_at: string | null;
-}
-
-interface ComposeEvidenceLink extends MatchEvidence {
-  source_type: EvidenceSourceType;
-}
-
 function fallbackSummary(
-  profile: ComposeProfile | null,
-  vacancy: ComposeVacancy | null,
+  profile: ProfileRecord | null,
+  vacancy: VacancyRecord | null,
   evidenceSnippets: string[],
-) {
+): string {
   const headline = profile?.headline || profile?.summary_default || "Candidate profile available.";
   const target = vacancy?.title
     ? `Target role: ${vacancy.title}.`
@@ -104,7 +50,7 @@ export async function composeResumeDocument(
     userId: string;
     vacancyId: string;
     analysis: MatchAnalysis;
-    evidenceLinks: ComposeEvidenceLink[];
+    evidenceLinks: EvidenceLinkRecord[];
   },
 ): Promise<ResumeDocumentTree> {
   const supabase = createSupabaseServerClient(event);
@@ -140,14 +86,14 @@ export async function composeResumeDocument(
       .order("issued_at", { ascending: false }),
   ]);
 
-  const profile = profileResult.data as ComposeProfile | null;
-  const vacancy = vacancyResult.data as ComposeVacancy | null;
-  const skills = (skillsResult.data || []) as ComposeSkill[];
-  const experiences = (experiencesResult.data || []) as ComposeExperience[];
-  const experienceBullets = (experienceBulletsResult.data || []) as ComposeExperienceBullet[];
-  const projects = (projectsResult.data || []) as ComposeProject[];
-  const projectBullets = (projectBulletsResult.data || []) as ComposeProjectBullet[];
-  const certifications = (certificationsResult.data || []) as ComposeCertification[];
+  const profile = profileResult.data as ProfileRecord | null;
+  const vacancy = vacancyResult.data as VacancyRecord | null;
+  const skills = (skillsResult.data || []) as SkillRecord[];
+  const experiences = (experiencesResult.data || []) as ExperienceRecord[];
+  const experienceBullets = (experienceBulletsResult.data || []) as ExperienceBulletRecord[];
+  const projects = (projectsResult.data || []) as ProjectRecord[];
+  const projectBullets = (projectBulletsResult.data || []) as ProjectBulletRecord[];
+  const certifications = (certificationsResult.data || []) as CertificationRecord[];
 
   const evidenceScoreMap = new Map(
     options.evidenceLinks.map((link) => [`${link.source_type}:${link.source_id}`, link.score]),
@@ -204,14 +150,14 @@ export async function composeResumeDocument(
     .slice(0, 12)
     .map((skill) => skill.name);
 
-  const groupedExperienceBullets = new Map<string, ComposeExperienceBullet[]>();
+  const groupedExperienceBullets = new Map<string, ExperienceBulletRecord[]>();
   for (const bullet of experienceBullets) {
     const group = groupedExperienceBullets.get(bullet.experience_id) || [];
     group.push(bullet);
     groupedExperienceBullets.set(bullet.experience_id, group);
   }
 
-  const groupedProjectBullets = new Map<string, ComposeProjectBullet[]>();
+  const groupedProjectBullets = new Map<string, ProjectBulletRecord[]>();
   for (const bullet of projectBullets) {
     const group = groupedProjectBullets.get(bullet.project_id) || [];
     group.push(bullet);

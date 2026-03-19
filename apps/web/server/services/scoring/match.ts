@@ -1,5 +1,16 @@
 import type { H3Event } from "h3";
 
+import type {
+  ExperienceBulletRecord,
+  MatchAnalysis,
+  SkillRecord,
+  VacancyParseResult,
+  VacancyRecord,
+  VacancyRequirementRecord,
+  EvidenceLinkRecord,
+  ProjectBulletRecord,
+} from "~/types";
+
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { createAppError } from "~/server/utils/errors";
 import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
@@ -13,38 +24,17 @@ interface CandidateEvidence {
 }
 
 interface MatchComputationInput {
-  vacancy: { parsed_json?: Record<string, unknown> | null };
-  requirements:
-    | Array<{
-        id: string;
-        label: string;
-        type: "must_have" | "nice_to_have" | "responsibility" | "domain" | "soft_signal";
-      }>
-    | null
-    | undefined;
-  skills?: Array<{
-    id: string;
-    name: string;
-    level?: string | null;
-    keywords?: string[] | null;
-  }> | null;
-  experienceBullets?: Array<{
-    id: string;
-    text_raw?: string | null;
-    text_refined?: string | null;
-    tech_tags?: string[] | null;
-    domain_tags?: string[] | null;
-    result_tags?: string[] | null;
-    seniority_tags?: string[] | null;
-  }> | null;
-  projectBullets?: Array<{
-    id: string;
-    text_raw?: string | null;
-    text_refined?: string | null;
-    tech_tags?: string[] | null;
-    domain_tags?: string[] | null;
-    result_tags?: string[] | null;
-  }> | null;
+  vacancy: Pick<VacancyRecord, "parsed_json">;
+  requirements: VacancyRequirementRecord[] | null | undefined;
+  skills?: SkillRecord[] | null;
+  experienceBullets?: ExperienceBulletRecord[] | null;
+  projectBullets?: ProjectBulletRecord[] | null;
+}
+
+interface MatchArtifacts {
+  analysis: MatchAnalysis;
+  evidenceLinks: EvidenceLinkRecord[];
+  candidateEvidenceCount: number;
 }
 
 const synonymMap: Record<string, string[]> = {
@@ -109,7 +99,7 @@ export function buildMatchArtifacts({
   skills,
   experienceBullets,
   projectBullets,
-}: MatchComputationInput) {
+}: MatchComputationInput): MatchArtifacts {
   if (!requirements?.length) {
     throw createAppError(400, "Vacancy requirements are missing. Parse the vacancy first.");
   }
@@ -200,7 +190,16 @@ export function buildMatchArtifacts({
     ? leadingEvidenceScoreSum / requirementSummaries.length
     : 0;
 
-  const parsedJson = vacancy.parsed_json || {};
+  const parsedJson: VacancyParseResult = vacancy.parsed_json || {
+    title: null,
+    company: null,
+    seniority: null,
+    domain: [],
+    must_have: [],
+    nice_to_have: [],
+    responsibilities: [],
+    soft_signals: [],
+  };
   const seniority =
     typeof parsedJson.seniority === "string" && parsedJson.seniority.length
       ? parsedJson.seniority
@@ -241,7 +240,7 @@ export function buildMatchArtifacts({
       penaltyWeight,
   );
 
-  const analysis = matchAnalysisSchema.parse({
+  const analysis: MatchAnalysis = matchAnalysisSchema.parse({
     overall_score: Number(overallScore.toFixed(4)),
     must_have_coverage: Number(mustHaveCoverage.toFixed(4)),
     semantic_similarity: Number(semanticSimilarity.toFixed(4)),
@@ -269,7 +268,11 @@ export function buildMatchArtifacts({
   };
 }
 
-export async function runMatchPipeline(event: H3Event, profileId: string, vacancyId: string) {
+export async function runMatchPipeline(
+  event: H3Event,
+  profileId: string,
+  vacancyId: string,
+): Promise<MatchArtifacts> {
   const supabase = createSupabaseServerClient(event);
 
   const [
@@ -306,11 +309,11 @@ export async function runMatchPipeline(event: H3Event, profileId: string, vacanc
   }
 
   const result = buildMatchArtifacts({
-    vacancy,
-    requirements,
-    skills,
-    experienceBullets,
-    projectBullets,
+    vacancy: vacancy as VacancyRecord,
+    requirements: requirements as VacancyRequirementRecord[],
+    skills: skills as SkillRecord[],
+    experienceBullets: experienceBullets as ExperienceBulletRecord[],
+    projectBullets: projectBullets as ProjectBulletRecord[],
   });
 
   appLogger.info(

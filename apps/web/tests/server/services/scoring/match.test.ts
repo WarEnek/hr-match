@@ -10,23 +10,31 @@ describe("buildMatchArtifacts", () => {
       vacancy: {
         parsed_json: {
           title: "Senior Frontend Engineer",
+          company: "Acme",
           seniority: "senior",
           domain: ["frontend"],
+          must_have: ["Nuxt 3", "TypeScript"],
+          nice_to_have: ["GraphQL"],
+          responsibilities: [],
+          soft_signals: [],
         },
       },
       requirements: [
         {
           id: requirementIdOne,
+          vacancy_id: "vacancy-1",
           label: "Nuxt 3",
           type: "must_have",
         },
         {
           id: requirementIdTwo,
+          vacancy_id: "vacancy-1",
           label: "TypeScript",
           type: "must_have",
         },
         {
           id: requirementIdThree,
+          vacancy_id: "vacancy-1",
           label: "GraphQL",
           type: "nice_to_have",
         },
@@ -34,12 +42,14 @@ describe("buildMatchArtifacts", () => {
       skills: [
         {
           id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          profile_id: "profile-1",
           name: "Nuxt",
           level: "advanced",
           keywords: ["SSR", "frontend"],
         },
         {
           id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          profile_id: "profile-1",
           name: "TypeScript",
           level: "advanced",
           keywords: ["typed frontend"],
@@ -48,6 +58,8 @@ describe("buildMatchArtifacts", () => {
       experienceBullets: [
         {
           id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          experience_id: "experience-1",
+          text_raw: "Built Nuxt 3 SSR dashboards with TypeScript for customer portals.",
           text_refined: "Built Nuxt 3 SSR dashboards with TypeScript for customer portals.",
           tech_tags: ["Nuxt 3", "TypeScript"],
           domain_tags: ["frontend"],
@@ -56,6 +68,8 @@ describe("buildMatchArtifacts", () => {
         },
         {
           id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          experience_id: "experience-1",
+          text_raw: "Integrated GraphQL APIs and improved schema-driven frontend flows.",
           text_refined: "Integrated GraphQL APIs and improved schema-driven frontend flows.",
           tech_tags: ["GraphQL"],
           domain_tags: ["frontend"],
@@ -66,6 +80,8 @@ describe("buildMatchArtifacts", () => {
       projectBullets: [
         {
           id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          project_id: "project-1",
+          text_raw: "Led frontend modernization for a Nuxt platform rollout.",
           text_refined: "Led frontend modernization for a Nuxt platform rollout.",
           tech_tags: ["Nuxt"],
           domain_tags: ["frontend"],
@@ -87,13 +103,19 @@ describe("buildMatchArtifacts", () => {
       vacancy: {
         parsed_json: {
           title: "Data Engineer",
+          company: "Acme",
           seniority: null,
           domain: ["data"],
+          must_have: ["Python"],
+          nice_to_have: [],
+          responsibilities: [],
+          soft_signals: [],
         },
       },
       requirements: [
         {
           id: requirementIdOne,
+          vacancy_id: "vacancy-2",
           label: "Python",
           type: "must_have",
         },
@@ -101,6 +123,7 @@ describe("buildMatchArtifacts", () => {
       skills: [
         {
           id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          profile_id: "profile-2",
           name: "Excel",
           level: "basic",
           keywords: ["spreadsheets"],
@@ -123,7 +146,18 @@ describe("buildMatchArtifacts", () => {
   it("fails fast when requirements are missing", () => {
     try {
       buildMatchArtifacts({
-        vacancy: { parsed_json: {} },
+        vacancy: {
+          parsed_json: {
+            title: null,
+            company: null,
+            seniority: null,
+            domain: [],
+            must_have: [],
+            nice_to_have: [],
+            responsibilities: [],
+            soft_signals: [],
+          },
+        },
         requirements: [],
         skills: [],
         experienceBullets: [],
