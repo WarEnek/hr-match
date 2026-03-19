@@ -1,8 +1,12 @@
-import type { H3Event } from "h3";
+import { getRequestIP, type H3Event } from "h3";
 
 import { createAppError } from "~/server/utils/errors";
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+export function clearRateLimitStore() {
+  rateLimitStore.clear();
+}
 
 export function enforceRateLimit(
   event: H3Event,

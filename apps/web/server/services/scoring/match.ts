@@ -12,6 +12,41 @@ interface CandidateEvidence {
   tags: string[];
 }
 
+interface MatchComputationInput {
+  vacancy: { parsed_json?: Record<string, unknown> | null };
+  requirements:
+    | Array<{
+        id: string;
+        label: string;
+        type: "must_have" | "nice_to_have" | "responsibility" | "domain" | "soft_signal";
+      }>
+    | null
+    | undefined;
+  skills?: Array<{
+    id: string;
+    name: string;
+    level?: string | null;
+    keywords?: string[] | null;
+  }> | null;
+  experienceBullets?: Array<{
+    id: string;
+    text_raw?: string | null;
+    text_refined?: string | null;
+    tech_tags?: string[] | null;
+    domain_tags?: string[] | null;
+    result_tags?: string[] | null;
+    seniority_tags?: string[] | null;
+  }> | null;
+  projectBullets?: Array<{
+    id: string;
+    text_raw?: string | null;
+    text_refined?: string | null;
+    tech_tags?: string[] | null;
+    domain_tags?: string[] | null;
+    result_tags?: string[] | null;
+  }> | null;
+}
+
 const synonymMap: Record<string, string[]> = {
   js: ["javascript"],
   ts: ["typescript"],
@@ -68,54 +103,25 @@ function computeOverlapScore(requirement: string, evidence: CandidateEvidence) {
   return Math.min(1, coverage);
 }
 
-export async function runMatchPipeline(event: H3Event, profileId: string, vacancyId: string) {
-  const supabase = createSupabaseServerClient(event);
-
-  const [
-    { data: vacancy, error: vacancyError },
-    { data: requirements, error: requirementsError },
-    { data: skills },
-    { data: experienceBullets },
-    { data: projectBullets },
-  ] = await Promise.all([
-    supabase
-      .from("vacancies")
-      .select("*")
-      .eq("id", vacancyId)
-      .eq("profile_id", profileId)
-      .maybeSingle(),
-    supabase
-      .from("vacancy_requirements")
-      .select("*")
-      .eq("vacancy_id", vacancyId)
-      .order("weight", { ascending: false }),
-    supabase.from("skills").select("*").eq("profile_id", profileId),
-    supabase.from("experience_bullets").select("*").eq("profile_id", profileId),
-    supabase.from("project_bullets").select("*").eq("profile_id", profileId),
-  ]);
-
-  if (vacancyError || !vacancy) {
-    throw createAppError(404, "Vacancy not found.");
-  }
-
-  if (requirementsError) {
-    throw createAppError(500, "Failed to load vacancy requirements.", {
-      cause: requirementsError.message,
-    });
-  }
-
+export function buildMatchArtifacts({
+  vacancy,
+  requirements,
+  skills,
+  experienceBullets,
+  projectBullets,
+}: MatchComputationInput) {
   if (!requirements?.length) {
     throw createAppError(400, "Vacancy requirements are missing. Parse the vacancy first.");
   }
 
   const candidateEvidence: CandidateEvidence[] = [
-    ...(skills || []).map((skill: any) => ({
+    ...(skills || []).map((skill) => ({
       source_type: "skill" as const,
       source_id: skill.id,
       text: `${skill.name} ${skill.level || ""}`.trim(),
       tags: skill.keywords || [],
     })),
-    ...(experienceBullets || []).map((bullet: any) => ({
+    ...(experienceBullets || []).map((bullet) => ({
       source_type: "experience_bullet" as const,
       source_id: bullet.id,
       text: bullet.text_refined || bullet.text_raw || "",
@@ -126,7 +132,7 @@ export async function runMatchPipeline(event: H3Event, profileId: string, vacanc
         ...(bullet.seniority_tags || []),
       ],
     })),
-    ...(projectBullets || []).map((bullet: any) => ({
+    ...(projectBullets || []).map((bullet) => ({
       source_type: "project_bullet" as const,
       source_id: bullet.id,
       text: bullet.text_refined || bullet.text_raw || "",
@@ -138,29 +144,22 @@ export async function runMatchPipeline(event: H3Event, profileId: string, vacanc
     })),
   ].filter((item) => item.text.trim().length > 0);
 
-  appLogger.info(
-    "Match pipeline input snapshot.",
-    buildRequestLogContext(event, {
-      vacancyId,
-      profileId,
-      requirementCount: requirements.length,
-      candidateEvidenceCount: candidateEvidence.length,
-    }),
-  );
-
-  const requirementSummaries = requirements.map((requirement: any) => {
+  const requirementSummaries = requirements.map((requirement) => {
     const ranked = candidateEvidence
       .map((item) => {
         const score = computeOverlapScore(requirement.label, item);
+        let reason = "No meaningful overlap detected.";
+
+        if (score > 0) {
+          reason = `Matched by keyword overlap against: ${item.text.slice(0, 140)}`;
+        }
+
         return {
           requirement_id: requirement.id,
           source_type: item.source_type,
           source_id: item.source_id,
           score: Number(score.toFixed(4)),
-          reason:
-            score > 0
-              ? `Matched by keyword overlap against: ${item.text.slice(0, 140)}`
-              : "No meaningful overlap detected.",
+          reason,
         };
       })
       .filter((item) => item.score > 0)
@@ -202,12 +201,20 @@ export async function runMatchPipeline(event: H3Event, profileId: string, vacanc
     : 0;
 
   const parsedJson = vacancy.parsed_json || {};
-  const seniority = parsedJson.seniority || "";
+  const seniority =
+    typeof parsedJson.seniority === "string" && parsedJson.seniority.length
+      ? parsedJson.seniority
+      : "";
   const domainTerms = Array.isArray(parsedJson.domain) ? parsedJson.domain : [];
   const profileHeadline = `${parsedJson.title || ""} ${seniority}`.trim().toLowerCase();
-  const domainFitHits = domainTerms.filter((term: string) =>
-    normalizeTokens(profileHeadline).includes(term.toLowerCase()),
-  ).length;
+  const normalizedHeadlineTokens = normalizeTokens(profileHeadline);
+  const domainFitHits = domainTerms.filter((term) => {
+    if (typeof term !== "string") {
+      return false;
+    }
+
+    return normalizedHeadlineTokens.includes(term.toLowerCase());
+  }).length;
   const seniorityBonus = seniority ? 0.1 : 0;
   const domainSeniorityFit = domainTerms.length
     ? Math.min(1, domainFitHits / domainTerms.length + seniorityBonus)
@@ -255,19 +262,77 @@ export async function runMatchPipeline(event: H3Event, profileId: string, vacanc
     })),
   );
 
+  return {
+    analysis,
+    evidenceLinks,
+    candidateEvidenceCount: candidateEvidence.length,
+  };
+}
+
+export async function runMatchPipeline(event: H3Event, profileId: string, vacancyId: string) {
+  const supabase = createSupabaseServerClient(event);
+
+  const [
+    { data: vacancy, error: vacancyError },
+    { data: requirements, error: requirementsError },
+    { data: skills },
+    { data: experienceBullets },
+    { data: projectBullets },
+  ] = await Promise.all([
+    supabase
+      .from("vacancies")
+      .select("*")
+      .eq("id", vacancyId)
+      .eq("profile_id", profileId)
+      .maybeSingle(),
+    supabase
+      .from("vacancy_requirements")
+      .select("*")
+      .eq("vacancy_id", vacancyId)
+      .order("weight", { ascending: false }),
+    supabase.from("skills").select("*").eq("profile_id", profileId),
+    supabase.from("experience_bullets").select("*").eq("profile_id", profileId),
+    supabase.from("project_bullets").select("*").eq("profile_id", profileId),
+  ]);
+
+  if (vacancyError || !vacancy) {
+    throw createAppError(404, "Vacancy not found.");
+  }
+
+  if (requirementsError) {
+    throw createAppError(500, "Failed to load vacancy requirements.", {
+      cause: requirementsError.message,
+    });
+  }
+
+  const result = buildMatchArtifacts({
+    vacancy,
+    requirements,
+    skills,
+    experienceBullets,
+    projectBullets,
+  });
+
+  appLogger.info(
+    "Match pipeline input snapshot.",
+    buildRequestLogContext(event, {
+      vacancyId,
+      profileId,
+      requirementCount: requirements.length,
+      candidateEvidenceCount: result.candidateEvidenceCount,
+    }),
+  );
+
   appLogger.info(
     "Match pipeline completed.",
     buildRequestLogContext(event, {
       vacancyId,
       profileId,
-      overallScore: analysis.overall_score,
-      mustHaveCoverage: analysis.must_have_coverage,
-      penalties: analysis.penalties.length,
+      overallScore: result.analysis.overall_score,
+      mustHaveCoverage: result.analysis.must_have_coverage,
+      penalties: result.analysis.penalties.length,
     }),
   );
 
-  return {
-    analysis,
-    evidenceLinks,
-  };
+  return result;
 }

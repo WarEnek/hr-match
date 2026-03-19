@@ -24,6 +24,7 @@ bun run dev
 bun run lint
 bun run format:check
 bun run typecheck
+bun run test:run
 bun run check
 ```
 
@@ -41,4 +42,11 @@ Build and preview locally:
 ```bash
 bun run build
 bun run preview
+```
+
+Run tests in watch mode or with coverage:
+
+```bash
+bun run test
+bun run test:coverage
 ```

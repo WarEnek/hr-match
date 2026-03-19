@@ -1,3 +1,5 @@
+import { createError } from "h3";
+
 export function createAppError(
   statusCode: number,
   statusMessage: string,
