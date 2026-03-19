@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ResumeDocumentTree } from "~/types";
 
+import { safeExternalHref } from "~/utils/external-url";
+
 defineProps<{
   documentTree: ResumeDocumentTree;
 }>();
@@ -57,9 +59,13 @@ defineProps<{
         <article v-for="project in documentTree.projects" :key="project.id">
           <div class="project-header">
             <strong>{{ project.title }}</strong>
-            <a v-if="project.url" :href="project.url" target="_blank" rel="noreferrer">{{
-              project.url
-            }}</a>
+            <a
+              v-if="safeExternalHref(project.url)"
+              :href="safeExternalHref(project.url)"
+              target="_blank"
+              rel="noopener noreferrer"
+              >{{ project.url }}</a
+            >
           </div>
           <p>{{ project.description }}</p>
           <ul v-if="project.bullets.some((bullet) => bullet.included)">

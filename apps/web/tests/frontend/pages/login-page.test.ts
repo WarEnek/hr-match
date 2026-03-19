@@ -34,7 +34,7 @@ describe("login page", () => {
 
     await inputs[0]!.setValue("jane@example.com");
     await inputs[1]!.setValue("password123");
-    await wrapper.findAll("button")[2]!.trigger("click");
+    await wrapper.find("form").trigger("submit");
 
     expect(signIn).toHaveBeenCalledWith({
       email: "jane@example.com",
@@ -63,7 +63,7 @@ describe("login page", () => {
     const inputs = wrapper.findAll("input");
     await inputs[0]!.setValue("new@example.com");
     await inputs[1]!.setValue("password123");
-    await buttons[2]!.trigger("click");
+    await wrapper.find("form").trigger("submit");
 
     expect(signUp).toHaveBeenCalledWith({
       email: "new@example.com",

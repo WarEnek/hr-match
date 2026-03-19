@@ -84,4 +84,45 @@ describe("ResumeDocumentView", () => {
     expect(wrapper.text()).not.toContain("Hidden project bullet");
     expect(wrapper.text()).not.toContain("Core Skills");
   });
+
+  it("does not render javascript: project URLs as links", () => {
+    const wrapper = mount(ResumeDocumentView, {
+      props: {
+        documentTree: {
+          version: 2,
+          sectionVisibility: {
+            summary: false,
+            skills: false,
+            experience: false,
+            projects: true,
+            certifications: false,
+            education: false,
+            languages: false,
+          },
+          profile: {
+            fullName: "Jane Doe",
+            headline: null,
+            contacts: [],
+          },
+          summary: "",
+          skills: [],
+          experiences: [],
+          projects: [
+            {
+              id: "project-1",
+              title: "Bad link",
+              description: "Desc",
+              url: "javascript:alert(1)",
+              bullets: [],
+            },
+          ],
+          certifications: [],
+          education: [],
+          languages: [],
+        },
+      },
+    });
+
+    expect(wrapper.find("a").exists()).toBe(false);
+  });
 });

@@ -73,22 +73,37 @@ async function submit() {
           Create account
         </button>
       </div>
-      <div class="form-grid" style="margin-top: 1rem">
+      <form class="form-grid" style="margin-top: 1rem" @submit.prevent="submit">
         <label class="field full">
           <span>Email</span>
-          <input v-model="form.email" type="email" autocomplete="email" required />
+          <input
+            v-model="form.email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+          />
         </label>
         <label class="field full">
           <span>Password</span>
-          <input v-model="form.password" type="password" autocomplete="current-password" required />
+          <input
+            v-model="form.password"
+            name="password"
+            type="password"
+            :autocomplete="mode === 'sign_up' ? 'new-password' : 'current-password'"
+            required
+            minlength="8"
+          />
         </label>
-      </div>
-      <p v-if="errorMessage" class="status-error" style="margin-top: 1rem">{{ errorMessage }}</p>
-      <div class="actions" style="margin-top: 1rem">
-        <button class="button" :disabled="auth.loading" @click="submit">
-          {{ submitButtonLabel }}
-        </button>
-      </div>
+        <div v-if="errorMessage" class="field full">
+          <p class="status-error">{{ errorMessage }}</p>
+        </div>
+        <div class="actions field full">
+          <button class="button" type="submit" :disabled="auth.loading">
+            {{ submitButtonLabel }}
+          </button>
+        </div>
+      </form>
     </section>
 
     <section class="panel">

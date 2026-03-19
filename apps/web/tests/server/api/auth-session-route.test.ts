@@ -19,6 +19,10 @@ vi.mock("~/server/utils/logger", () => ({
   buildRequestLogContext: vi.fn(() => ({})),
 }));
 
+vi.mock("~/server/utils/rate-limit", () => ({
+  enforceRateLimit: vi.fn(),
+}));
+
 async function loadHandler() {
   vi.resetModules();
   stubDefineEventHandler();
