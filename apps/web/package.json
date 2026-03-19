@@ -1,0 +1,43 @@
+{
+  "name": "web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test:run",
+    "dev": "nuxt dev",
+    "format": "oxfmt . --write --ignore-path .gitignore",
+    "format:check": "oxfmt . --check --ignore-path .gitignore",
+    "generate": "nuxt generate",
+    "lint": "oxlint . -D no-explicit-any -D explicit-module-boundary-types -D explicit-function-return-type",
+    "lint:fix": "oxlint . --fix -D no-explicit-any -D explicit-module-boundary-types -D explicit-function-return-type",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:run": "vitest run",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.11.3",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.99.2",
+    "nuxt": "^3.21.2",
+    "openai": "^6.32.0",
+    "pinia": "^3.0.4",
+    "playwright": "^1.58.2",
+    "vue": "^3.5.30",
+    "vue-router": "^4.6.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.8.4",
+    "oxfmt": "^0.41.0",
+    "oxlint": "^1.56.0",
+    "vitest": "^4.1.0"
+  },
+  "packageManager": "bun@1.3.11"
+}
