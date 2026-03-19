@@ -174,6 +174,15 @@ export const resumeGenerateSchema = z.object({
 
 export const documentTreeSchema = z.object({
   version: z.number().int().optional(),
+  sectionVisibility: z.object({
+    summary: z.boolean(),
+    skills: z.boolean(),
+    experience: z.boolean(),
+    projects: z.boolean(),
+    certifications: z.boolean(),
+    education: z.boolean(),
+    languages: z.boolean(),
+  }),
   profile: z.object({
     fullName: z.string().trim().min(1),
     headline: z.string().nullable(),

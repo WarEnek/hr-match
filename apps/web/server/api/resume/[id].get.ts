@@ -4,6 +4,7 @@ import { createResumePdfSignedUrl } from "~/server/services/pdf/storage";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
+import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
 import { normalizeResumeDocumentTree } from "~/utils/resume-document";
 
 export default defineEventHandler(async (event) => {
@@ -46,11 +47,24 @@ export default defineEventHandler(async (event) => {
   }
 
   const exportJobList = (exportJobs || []) as ExportJobRecord[];
+  const normalizedDocumentTree = normalizeResumeDocumentTree(resume.document_tree);
+
+  appLogger.info(
+    "Resume draft loaded for editor.",
+    buildRequestLogContext(event, {
+      resumeGenerationId: resumeId,
+      summaryLength: normalizedDocumentTree.summary.length,
+      skillsCount: normalizedDocumentTree.skills.length,
+      hiddenSectionCount: Object.values(normalizedDocumentTree.sectionVisibility).filter(
+        (isVisible) => !isVisible,
+      ).length,
+    }),
+  );
 
   return {
     resume: {
       ...resume,
-      document_tree: normalizeResumeDocumentTree(resume.document_tree),
+      document_tree: normalizedDocumentTree,
     },
     evidenceLinks,
     exportJobs: exportJobList,

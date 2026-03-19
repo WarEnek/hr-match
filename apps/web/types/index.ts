@@ -8,6 +8,16 @@ export type EvidenceSourceType = "experience_bullet" | "project_bullet" | "skill
 export type EmbeddingSourceType = "experience_bullet" | "project_bullet" | "vacancy_requirement";
 export type ResumeBulletSourceType = "experience_bullet" | "project_bullet";
 
+export interface ResumeSectionVisibility {
+  summary: boolean;
+  skills: boolean;
+  experience: boolean;
+  projects: boolean;
+  certifications: boolean;
+  education: boolean;
+  languages: boolean;
+}
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export type VectorValue = string | number[] | null;
@@ -202,6 +212,7 @@ export interface MatchAnalysis {
 
 export interface ResumeDocumentTree {
   version?: number;
+  sectionVisibility: ResumeSectionVisibility;
   profile: {
     fullName: string;
     headline: string | null;

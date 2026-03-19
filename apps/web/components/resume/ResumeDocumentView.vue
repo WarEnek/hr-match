@@ -20,17 +20,17 @@ defineProps<{
       </div>
     </section>
 
-    <section>
+    <section v-if="documentTree.sectionVisibility.summary && documentTree.summary">
       <h2>Professional Summary</h2>
       <p>{{ documentTree.summary }}</p>
     </section>
 
-    <section v-if="documentTree.skills.length">
+    <section v-if="documentTree.sectionVisibility.skills && documentTree.skills.length">
       <h2>Core Skills</h2>
       <p>{{ documentTree.skills.join(", ") }}</p>
     </section>
 
-    <section v-if="documentTree.experiences.length">
+    <section v-if="documentTree.sectionVisibility.experience && documentTree.experiences.length">
       <h2>Work Experience</h2>
       <div class="section-gap">
         <article v-for="experience in documentTree.experiences" :key="experience.id">
@@ -51,7 +51,7 @@ defineProps<{
       </div>
     </section>
 
-    <section v-if="documentTree.projects.length">
+    <section v-if="documentTree.sectionVisibility.projects && documentTree.projects.length">
       <h2>Selected Projects</h2>
       <div class="section-gap">
         <article v-for="project in documentTree.projects" :key="project.id">
@@ -74,7 +74,9 @@ defineProps<{
       </div>
     </section>
 
-    <section v-if="documentTree.certifications.length">
+    <section
+      v-if="documentTree.sectionVisibility.certifications && documentTree.certifications.length"
+    >
       <h2>Certifications</h2>
       <ul>
         <li v-for="certification in documentTree.certifications" :key="certification.id">
@@ -84,14 +86,14 @@ defineProps<{
       </ul>
     </section>
 
-    <section v-if="documentTree.education.length">
+    <section v-if="documentTree.sectionVisibility.education && documentTree.education.length">
       <h2>Education</h2>
       <ul>
         <li v-for="entry in documentTree.education" :key="entry">{{ entry }}</li>
       </ul>
     </section>
 
-    <section v-if="documentTree.languages.length">
+    <section v-if="documentTree.sectionVisibility.languages && documentTree.languages.length">
       <h2>Languages</h2>
       <p>{{ documentTree.languages.join(", ") }}</p>
     </section>

@@ -226,6 +226,15 @@ export async function composeResumeDocument(
 
   const documentTree = documentTreeSchema.parse({
     version: 2,
+    sectionVisibility: {
+      summary: true,
+      skills: true,
+      experience: true,
+      projects: true,
+      certifications: true,
+      education: true,
+      languages: true,
+    },
     profile: {
       fullName: profile?.full_name || "Unnamed Candidate",
       headline: profile?.headline || null,

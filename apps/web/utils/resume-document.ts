@@ -3,6 +3,7 @@ import type {
   ResumeDocumentBullet,
   ResumeDocumentExperience,
   ResumeDocumentProject,
+  ResumeSectionVisibility,
   ResumeDocumentTree,
 } from "~/types";
 
@@ -80,6 +81,20 @@ function normalizeProjectBlock(block: LegacyProjectBlock): ResumeDocumentProject
   };
 }
 
+function normalizeSectionVisibility(
+  value: Partial<ResumeSectionVisibility> | undefined,
+): ResumeSectionVisibility {
+  return {
+    summary: value?.summary ?? true,
+    skills: value?.skills ?? true,
+    experience: value?.experience ?? true,
+    projects: value?.projects ?? true,
+    certifications: value?.certifications ?? true,
+    education: value?.education ?? true,
+    languages: value?.languages ?? true,
+  };
+}
+
 export function normalizeResumeDocumentTree(
   input: JsonValue | ResumeDocumentTree,
 ): ResumeDocumentTree {
@@ -87,6 +102,7 @@ export function normalizeResumeDocumentTree(
 
   return {
     version: 2,
+    sectionVisibility: normalizeSectionVisibility(value.sectionVisibility),
     profile: {
       fullName: value.profile?.fullName || "Unnamed Candidate",
       headline: value.profile?.headline || null,
@@ -117,4 +133,22 @@ export function getIncludedTextCount(documentTree: ResumeDocumentTree): number {
   );
 
   return experienceCount + projectCount;
+}
+
+export function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
+  const nextItems = [...items];
+
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= nextItems.length ||
+    toIndex >= nextItems.length ||
+    fromIndex === toIndex
+  ) {
+    return nextItems;
+  }
+
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, movedItem);
+  return nextItems;
 }

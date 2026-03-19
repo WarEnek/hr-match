@@ -6,7 +6,11 @@ import { navigateTo, useFetch, useRoute } from "#imports";
 import type { ExportJobRecord, MatchAnalysis, ResumeDocumentTree } from "~/types";
 
 import { useAuthStore } from "~/stores/auth";
-import { getIncludedTextCount, normalizeResumeDocumentTree } from "~/utils/resume-document";
+import {
+  getIncludedTextCount,
+  moveArrayItem,
+  normalizeResumeDocumentTree,
+} from "~/utils/resume-document";
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -113,6 +117,38 @@ function toggleProjectBullet(projectId: string, sourceId: string): void {
   bullet.included = !bullet.included;
 }
 
+function toggleSectionVisibility(section: keyof ResumeDocumentTree["sectionVisibility"]): void {
+  if (!editableDocumentTree.value) {
+    return;
+  }
+
+  editableDocumentTree.value.sectionVisibility[section] =
+    !editableDocumentTree.value.sectionVisibility[section];
+}
+
+function moveSkill(fromIndex: number, direction: "up" | "down"): void {
+  if (!editableDocumentTree.value) {
+    return;
+  }
+
+  const targetIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+  editableDocumentTree.value.skills = moveArrayItem(
+    editableDocumentTree.value.skills,
+    fromIndex,
+    targetIndex,
+  );
+}
+
+function removeSkill(skillIndex: number): void {
+  if (!editableDocumentTree.value) {
+    return;
+  }
+
+  editableDocumentTree.value.skills = editableDocumentTree.value.skills.filter(
+    (_skill, index) => index !== skillIndex,
+  );
+}
+
 const documentTree = computed(() => editableDocumentTree.value);
 const analysis = computed(() => data.value?.resume?.analysis_json as MatchAnalysis | null);
 const includedBulletCount = computed(() => {
@@ -132,6 +168,10 @@ const includedBulletCount = computed(() => {
         <label class="field full">
           <span>Draft title</span>
           <input v-model="editableTitle" type="text" />
+        </label>
+        <label v-if="editableDocumentTree" class="field full">
+          <span>Professional summary</span>
+          <textarea v-model="editableDocumentTree.summary"></textarea>
         </label>
       </div>
       <p class="hint" style="margin-top: 0.75rem">
@@ -171,6 +211,60 @@ const includedBulletCount = computed(() => {
           Open latest PDF
         </a>
       </div>
+    </section>
+
+    <section v-if="documentTree" class="panel">
+      <h2>Section visibility</h2>
+      <div class="inline-grid">
+        <label
+          v-for="(isVisible, sectionKey) in documentTree.sectionVisibility"
+          :key="sectionKey"
+          class="field"
+        >
+          <span>
+            <input
+              :checked="isVisible"
+              type="checkbox"
+              style="width: auto; margin-right: 0.5rem"
+              @change="toggleSectionVisibility(sectionKey)"
+            />
+            {{ sectionKey }}
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <section v-if="documentTree" class="panel">
+      <h2>Skills order</h2>
+      <div v-if="documentTree.skills.length" class="record-list">
+        <article
+          v-for="(skill, index) in documentTree.skills"
+          :key="`${skill}-${index}`"
+          class="record-card"
+        >
+          <div class="record-header">
+            <strong>{{ skill }}</strong>
+            <div class="actions">
+              <button
+                class="button-secondary"
+                :disabled="index === 0"
+                @click="moveSkill(index, 'up')"
+              >
+                Move up
+              </button>
+              <button
+                class="button-secondary"
+                :disabled="index === documentTree.skills.length - 1"
+                @click="moveSkill(index, 'down')"
+              >
+                Move down
+              </button>
+              <button class="button-danger" @click="removeSkill(index)">Remove</button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <p v-else class="muted">No skills included in this draft.</p>
     </section>
 
     <section v-if="analysis" class="metrics-grid">

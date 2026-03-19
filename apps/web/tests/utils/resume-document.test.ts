@@ -27,6 +27,15 @@ describe("resume document normalization", () => {
     });
 
     expect(documentTree.version).toBe(2);
+    expect(documentTree.sectionVisibility).toEqual({
+      summary: true,
+      skills: true,
+      experience: true,
+      projects: true,
+      certifications: true,
+      education: true,
+      languages: true,
+    });
     expect(documentTree.experiences[0]?.bullets[0]).toEqual({
       sourceId: "experience-1-1",
       sourceType: "experience_bullet",
@@ -38,6 +47,15 @@ describe("resume document normalization", () => {
   it("counts only included bullets across experience and projects", () => {
     const count = getIncludedTextCount({
       version: 2,
+      sectionVisibility: {
+        summary: true,
+        skills: true,
+        experience: true,
+        projects: true,
+        certifications: true,
+        education: true,
+        languages: true,
+      },
       profile: {
         fullName: "Jane Doe",
         headline: null,

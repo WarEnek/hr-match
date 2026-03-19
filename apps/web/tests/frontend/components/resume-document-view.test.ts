@@ -10,6 +10,15 @@ describe("ResumeDocumentView", () => {
       props: {
         documentTree: {
           version: 2,
+          sectionVisibility: {
+            summary: true,
+            skills: false,
+            experience: true,
+            projects: true,
+            certifications: true,
+            education: true,
+            languages: true,
+          },
           profile: {
             fullName: "Jane Doe",
             headline: "Engineer",
@@ -73,5 +82,6 @@ describe("ResumeDocumentView", () => {
     expect(wrapper.text()).not.toContain("Hidden bullet");
     expect(wrapper.text()).toContain("Visible project bullet");
     expect(wrapper.text()).not.toContain("Hidden project bullet");
+    expect(wrapper.text()).not.toContain("Core Skills");
   });
 });
