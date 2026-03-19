@@ -17,6 +17,7 @@ import {
   generateDeterministicEmbedding,
   parseStoredEmbedding,
 } from "~/server/services/embeddings/generator";
+import { rerankRequirementEvidence } from "~/server/services/scoring/rerank";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { createAppError } from "~/server/utils/errors";
 import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
@@ -45,6 +46,24 @@ interface MatchArtifacts {
   candidateEvidenceCount: number;
   candidateEvidenceWithStoredEmbeddings: number;
   requirementsWithStoredEmbeddings: number;
+  requirementSummaries: RequirementSummary[];
+}
+
+interface RequirementSummaryEvidence extends EvidenceLinkRecord {
+  keyword_score: number;
+  semantic_score: number;
+  text: string;
+}
+
+interface RequirementSummary {
+  requirement_id: string;
+  label: string;
+  type: "must_have" | "nice_to_have" | "responsibility" | "domain" | "soft_signal";
+  coverage_score: number;
+  evidence: RequirementSummaryEvidence[];
+  semantic_top_score: number;
+  keyword_top_score: number;
+  has_stored_embedding: boolean;
 }
 
 const synonymMap: Record<string, string[]> = {
@@ -105,6 +124,136 @@ function computeOverlapScore(requirement: string, evidence: CandidateEvidence) {
 
 function buildFallbackEmbedding(text: string, tags: string[]): number[] {
   return generateDeterministicEmbedding(buildEmbeddingInput(text, tags));
+}
+
+function finalizeMatchArtifacts(
+  vacancy: Pick<VacancyRecord, "parsed_json">,
+  requirementSummaries: RequirementSummary[],
+  candidateEvidenceCount: number,
+  candidateEvidenceWithStoredEmbeddings: number,
+): MatchArtifacts {
+  const mustHaveRequirements = requirementSummaries.filter((item) => item.type === "must_have");
+  const mustHaveCoverage = mustHaveRequirements.length
+    ? mustHaveRequirements.filter((item) => item.coverage_score >= 0.5).length /
+      mustHaveRequirements.length
+    : 0;
+
+  const allCoverageScores = requirementSummaries.map((item) => item.coverage_score);
+  const averageCoverage = allCoverageScores.length
+    ? allCoverageScores.reduce((sum, value) => sum + value, 0) / allCoverageScores.length
+    : 0;
+  const keywordCoverage = requirementSummaries.length
+    ? requirementSummaries.reduce((sum, item) => sum + item.keyword_top_score, 0) /
+      requirementSummaries.length
+    : 0;
+  const semanticSimilarity = requirementSummaries.length
+    ? requirementSummaries.reduce((sum, item) => sum + item.semantic_top_score, 0) /
+      requirementSummaries.length
+    : 0;
+  const evidenceStrength = requirementSummaries.length
+    ? requirementSummaries.reduce((sum, item) => {
+        if (!item.evidence.length) {
+          return sum;
+        }
+
+        const supportBonus = Math.min(0.1, 0.05 * Math.max(0, item.evidence.length - 1));
+        return sum + Math.min(1, item.evidence[0].score + supportBonus);
+      }, 0) / requirementSummaries.length
+    : 0;
+
+  const parsedJson: VacancyParseResult = vacancy.parsed_json || {
+    title: null,
+    company: null,
+    seniority: null,
+    domain: [],
+    must_have: [],
+    nice_to_have: [],
+    responsibilities: [],
+    soft_signals: [],
+  };
+  const seniority =
+    typeof parsedJson.seniority === "string" && parsedJson.seniority.length
+      ? parsedJson.seniority
+      : "";
+  const domainTerms = Array.isArray(parsedJson.domain) ? parsedJson.domain : [];
+  const profileHeadline = `${parsedJson.title || ""} ${seniority}`.trim().toLowerCase();
+  const normalizedHeadlineTokens = normalizeTokens(profileHeadline);
+  const domainFitHits = domainTerms.filter((term) => {
+    if (typeof term !== "string") {
+      return false;
+    }
+
+    return normalizedHeadlineTokens.includes(term.toLowerCase());
+  }).length;
+  const seniorityBonus = seniority ? 0.1 : 0;
+  const domainSeniorityFit = domainTerms.length
+    ? Math.min(1, domainFitHits / domainTerms.length + seniorityBonus)
+    : 0.2;
+
+  const penalties: string[] = [];
+
+  if (mustHaveRequirements.some((item) => item.coverage_score < 0.35)) {
+    penalties.push("Critical must-have requirements are not sufficiently covered.");
+  }
+
+  if (candidateEvidenceCount < 5) {
+    penalties.push("Evidence pool is too small for reliable matching.");
+  }
+
+  const penaltyWeight = penalties.length ? 0.08 * penalties.length : 0;
+  const overallScore = Math.max(
+    0,
+    0.4 * mustHaveCoverage +
+      0.2 * semanticSimilarity +
+      0.15 * keywordCoverage +
+      0.15 * evidenceStrength +
+      0.1 * domainSeniorityFit -
+      penaltyWeight,
+  );
+
+  const analysis: MatchAnalysis = matchAnalysisSchema.parse({
+    overall_score: Number(overallScore.toFixed(4)),
+    must_have_coverage: Number(mustHaveCoverage.toFixed(4)),
+    semantic_similarity: Number(semanticSimilarity.toFixed(4)),
+    keyword_coverage: Number(keywordCoverage.toFixed(4)),
+    evidence_strength: Number(evidenceStrength.toFixed(4)),
+    domain_seniority_fit: Number(domainSeniorityFit.toFixed(4)),
+    penalties,
+    requirements: requirementSummaries.map((requirement) => ({
+      requirement_id: requirement.requirement_id,
+      label: requirement.label,
+      type: requirement.type,
+      coverage_score: requirement.coverage_score,
+      evidence: requirement.evidence.map((evidence) => ({
+        requirement_id: evidence.requirement_id,
+        source_type: evidence.source_type,
+        source_id: evidence.source_id,
+        score: evidence.score,
+        reason: evidence.reason,
+      })),
+    })),
+  });
+
+  const evidenceLinks = requirementSummaries.flatMap((requirement) =>
+    requirement.evidence.map((evidence) => ({
+      requirement_id: requirement.requirement_id,
+      source_type: evidence.source_type,
+      source_id: evidence.source_id,
+      score: evidence.score,
+      reason: evidence.reason,
+    })),
+  );
+
+  return {
+    analysis,
+    evidenceLinks,
+    candidateEvidenceCount,
+    candidateEvidenceWithStoredEmbeddings,
+    requirementsWithStoredEmbeddings: requirementSummaries.filter(
+      (item) => item.has_stored_embedding,
+    ).length,
+    requirementSummaries,
+  };
 }
 
 export function buildMatchArtifacts({
@@ -174,7 +323,7 @@ export function buildMatchArtifacts({
     (item) => item.hasStoredEmbedding,
   ).length;
 
-  const requirementSummaries = requirements.map((requirement) => {
+  const requirementSummaries: RequirementSummary[] = requirements.map((requirement) => {
     const requirementEmbedding =
       parseStoredEmbedding(requirement.embedding) ||
       buildFallbackEmbedding(requirement.label, [requirement.normalized_label || ""]);
@@ -199,6 +348,7 @@ export function buildMatchArtifacts({
           keyword_score: Number(keywordScore.toFixed(4)),
           semantic_score: Number(semanticScore.toFixed(4)),
           reason,
+          text: item.text,
         };
       })
       .filter((item) => item.score > 0)
@@ -219,122 +369,12 @@ export function buildMatchArtifacts({
     };
   });
 
-  const mustHaveRequirements = requirementSummaries.filter((item) => item.type === "must_have");
-  const mustHaveCoverage = mustHaveRequirements.length
-    ? mustHaveRequirements.filter((item) => item.coverage_score >= 0.5).length /
-      mustHaveRequirements.length
-    : 0;
-
-  const allCoverageScores = requirementSummaries.map((item) => item.coverage_score);
-  const averageCoverage = allCoverageScores.length
-    ? allCoverageScores.reduce((sum, value) => sum + value, 0) / allCoverageScores.length
-    : 0;
-  const keywordCoverage = requirementSummaries.length
-    ? requirementSummaries.reduce((sum, item) => sum + item.keyword_top_score, 0) /
-      requirementSummaries.length
-    : 0;
-  const semanticSimilarity = requirementSummaries.length
-    ? requirementSummaries.reduce((sum, item) => sum + item.semantic_top_score, 0) /
-      requirementSummaries.length
-    : 0;
-  const leadingEvidenceScoreSum = requirementSummaries.reduce((sum, item) => {
-    if (!item.evidence.length) {
-      return sum;
-    }
-
-    return sum + item.evidence[0].score;
-  }, 0);
-  const evidenceStrength = requirementSummaries.length
-    ? requirementSummaries.reduce((sum, item) => {
-        if (!item.evidence.length) {
-          return sum;
-        }
-
-        const supportBonus = Math.min(0.1, 0.05 * Math.max(0, item.evidence.length - 1));
-        return sum + Math.min(1, item.evidence[0].score + supportBonus);
-      }, 0) / requirementSummaries.length
-    : 0;
-
-  const parsedJson: VacancyParseResult = vacancy.parsed_json || {
-    title: null,
-    company: null,
-    seniority: null,
-    domain: [],
-    must_have: [],
-    nice_to_have: [],
-    responsibilities: [],
-    soft_signals: [],
-  };
-  const seniority =
-    typeof parsedJson.seniority === "string" && parsedJson.seniority.length
-      ? parsedJson.seniority
-      : "";
-  const domainTerms = Array.isArray(parsedJson.domain) ? parsedJson.domain : [];
-  const profileHeadline = `${parsedJson.title || ""} ${seniority}`.trim().toLowerCase();
-  const normalizedHeadlineTokens = normalizeTokens(profileHeadline);
-  const domainFitHits = domainTerms.filter((term) => {
-    if (typeof term !== "string") {
-      return false;
-    }
-
-    return normalizedHeadlineTokens.includes(term.toLowerCase());
-  }).length;
-  const seniorityBonus = seniority ? 0.1 : 0;
-  const domainSeniorityFit = domainTerms.length
-    ? Math.min(1, domainFitHits / domainTerms.length + seniorityBonus)
-    : 0.2;
-
-  const penalties: string[] = [];
-
-  if (mustHaveRequirements.some((item) => item.coverage_score < 0.35)) {
-    penalties.push("Critical must-have requirements are not sufficiently covered.");
-  }
-
-  if (candidateEvidence.length < 5) {
-    penalties.push("Evidence pool is too small for reliable matching.");
-  }
-
-  const penaltyWeight = penalties.length ? 0.08 * penalties.length : 0;
-  const overallScore = Math.max(
-    0,
-    0.4 * mustHaveCoverage +
-      0.2 * semanticSimilarity +
-      0.15 * keywordCoverage +
-      0.15 * evidenceStrength +
-      0.1 * domainSeniorityFit -
-      penaltyWeight,
-  );
-
-  const analysis: MatchAnalysis = matchAnalysisSchema.parse({
-    overall_score: Number(overallScore.toFixed(4)),
-    must_have_coverage: Number(mustHaveCoverage.toFixed(4)),
-    semantic_similarity: Number(semanticSimilarity.toFixed(4)),
-    keyword_coverage: Number(keywordCoverage.toFixed(4)),
-    evidence_strength: Number(evidenceStrength.toFixed(4)),
-    domain_seniority_fit: Number(domainSeniorityFit.toFixed(4)),
-    penalties,
-    requirements: requirementSummaries,
-  });
-
-  const evidenceLinks = requirementSummaries.flatMap((requirement) =>
-    requirement.evidence.map((evidence) => ({
-      requirement_id: requirement.requirement_id,
-      source_type: evidence.source_type,
-      source_id: evidence.source_id,
-      score: evidence.score,
-      reason: evidence.reason,
-    })),
-  );
-
-  return {
-    analysis,
-    evidenceLinks,
-    candidateEvidenceCount: candidateEvidence.length,
+  return finalizeMatchArtifacts(
+    vacancy,
+    requirementSummaries,
+    candidateEvidence.length,
     candidateEvidenceWithStoredEmbeddings,
-    requirementsWithStoredEmbeddings: requirementSummaries.filter(
-      (item) => item.has_stored_embedding,
-    ).length,
-  };
+  );
 }
 
 export async function runMatchPipeline(
@@ -384,6 +424,16 @@ export async function runMatchPipeline(
     experienceBullets: experienceBullets as ExperienceBulletRecord[],
     projectBullets: projectBullets as ProjectBulletRecord[],
   });
+  const rerankResult = await rerankRequirementEvidence(event, result.requirementSummaries);
+  const finalResult =
+    rerankResult.fallbackCount === result.requirementSummaries.length
+      ? result
+      : finalizeMatchArtifacts(
+          vacancy as VacancyRecord,
+          rerankResult.summaries,
+          result.candidateEvidenceCount,
+          result.candidateEvidenceWithStoredEmbeddings,
+        );
 
   appLogger.info(
     "Match pipeline input snapshot.",
@@ -394,6 +444,7 @@ export async function runMatchPipeline(
       candidateEvidenceCount: result.candidateEvidenceCount,
       candidateEvidenceWithStoredEmbeddings: result.candidateEvidenceWithStoredEmbeddings,
       requirementsWithStoredEmbeddings: result.requirementsWithStoredEmbeddings,
+      rerankFallbackCount: rerankResult.fallbackCount,
     }),
   );
 
@@ -402,11 +453,11 @@ export async function runMatchPipeline(
     buildRequestLogContext(event, {
       vacancyId,
       profileId,
-      overallScore: result.analysis.overall_score,
-      mustHaveCoverage: result.analysis.must_have_coverage,
-      penalties: result.analysis.penalties.length,
+      overallScore: finalResult.analysis.overall_score,
+      mustHaveCoverage: finalResult.analysis.must_have_coverage,
+      penalties: finalResult.analysis.penalties.length,
     }),
   );
 
-  return result;
+  return finalResult;
 }

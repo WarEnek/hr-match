@@ -291,3 +291,28 @@ export const summaryComposerJsonSchema = {
     summary: { type: "string" },
   },
 };
+
+export const evidenceSelectorJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["best_matches"],
+  properties: {
+    best_matches: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["source_type", "source_id", "score", "reason"],
+        properties: {
+          source_type: {
+            type: "string",
+            enum: ["experience_bullet", "project_bullet", "skill"],
+          },
+          source_id: { type: "string" },
+          score: { type: "number" },
+          reason: { type: "string" },
+        },
+      },
+    },
+  },
+};
