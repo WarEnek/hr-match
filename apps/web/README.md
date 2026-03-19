@@ -41,6 +41,8 @@ bun run format
 - `ALLOW_INSECURE_LLM_HTTP=true` — only in development: allows `http://127.0.0.1` / `http://localhost` when those hosts are listed in `NOVITA_ALLOWED_HOSTS`.
 - `INTERNAL_WORKER_TOKEN` — required for `POST /api/internal/embeddings/run`; use a dedicated secret (do not reuse `NUXT_SESSION_SECRET`).
 
+HTTP responses include baseline security headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) via Nitro `routeRules`. Profile and project link fields are validated server-side as `http`/`https` only; the resume preview uses the same rules for clickable project URLs.
+
 ## Production
 
 Build and preview locally:

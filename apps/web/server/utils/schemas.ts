@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { nullableHttpOrHttpsUrl } from "~/server/utils/url-schemas";
+
 const nullableTrimmedString = z.union([z.string(), z.null(), z.undefined()]).transform((value) => {
   if (typeof value !== "string") {
     return null;
@@ -57,9 +59,9 @@ export const profileUpsertSchema = z.object({
   email: nullableTrimmedString,
   phone: nullableTrimmedString,
   location: nullableTrimmedString,
-  linkedin_url: nullableTrimmedString,
-  github_url: nullableTrimmedString,
-  website_url: nullableTrimmedString,
+  linkedin_url: nullableHttpOrHttpsUrl,
+  github_url: nullableHttpOrHttpsUrl,
+  website_url: nullableHttpOrHttpsUrl,
   summary_default: nullableTrimmedString,
 });
 
@@ -76,7 +78,7 @@ export const certificationUpsertSchema = z.object({
   issuer: nullableTrimmedString,
   issued_at: nullableDateString,
   expires_at: nullableDateString,
-  credential_url: nullableTrimmedString,
+  credential_url: nullableHttpOrHttpsUrl,
 });
 
 export const experienceUpsertSchema = z.object({
@@ -103,7 +105,7 @@ export const experienceBulletUpsertSchema = z.object({
 export const projectUpsertSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().min(1),
-  url: nullableTrimmedString,
+  url: nullableHttpOrHttpsUrl,
   domain_tags: cleanedStringArray,
   stack_tags: cleanedStringArray,
 });
@@ -220,7 +222,7 @@ export const documentTreeSchema = z.object({
           included: z.boolean(),
         }),
       ),
-      url: z.string().nullable(),
+      url: nullableHttpOrHttpsUrl,
     }),
   ),
   certifications: z.array(

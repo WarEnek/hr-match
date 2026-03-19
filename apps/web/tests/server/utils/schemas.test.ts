@@ -31,6 +31,15 @@ describe("schema validation", () => {
     });
   });
 
+  it("rejects non-http(s) URLs on profile link fields", () => {
+    expect(() =>
+      profileUpsertSchema.parse({
+        full_name: "Jane Doe",
+        linkedin_url: "javascript:alert(1)",
+      }),
+    ).toThrow();
+  });
+
   it("applies defaults for vacancy parser arrays", () => {
     const parsedVacancy = vacancyParserResponseSchema.parse({
       title: "Frontend Engineer",
