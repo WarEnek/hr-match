@@ -1,3 +1,7 @@
+import type { VacancyParseResult, VacancyRecord, VacancyRequirementRecord } from "~/types";
+
+import { createMockH3Event, stubDefineEventHandler } from "~/tests/utils/h3";
+
 const {
   requireUserMock,
   requireProfileMock,
@@ -29,11 +33,20 @@ vi.mock("~/server/services/supabase/server", () => ({
   createSupabaseServerClient: createSupabaseServerClientMock,
 }));
 
-function createVacancyParseSupabaseMock(vacancy: Record<string, unknown> | null) {
+interface VacancyUpdatePayload {
+  title: string | null;
+  company: string | null;
+  parsed_json: VacancyParseResult;
+  status: string;
+}
+
+function createVacancyParseSupabaseMock(
+  vacancy: (Pick<VacancyRecord, "id" | "title" | "company"> & { raw_text: string }) | null,
+) {
   const state = {
-    vacancyUpdatePayload: null as Record<string, unknown> | null,
+    vacancyUpdatePayload: null as VacancyUpdatePayload | null,
     deletedVacancyId: null as string | null,
-    insertedRequirements: null as Array<Record<string, unknown>> | null,
+    insertedRequirements: null as VacancyRequirementRecord[] | null,
   };
 
   const supabase = {
@@ -52,7 +65,7 @@ function createVacancyParseSupabaseMock(vacancy: Record<string, unknown> | null)
               error: null,
             });
           },
-          update(payload: Record<string, unknown>) {
+          update(payload: VacancyUpdatePayload) {
             state.vacancyUpdatePayload = payload;
 
             return {
@@ -79,7 +92,7 @@ function createVacancyParseSupabaseMock(vacancy: Record<string, unknown> | null)
               },
             };
           },
-          insert(rows: Array<Record<string, unknown>>) {
+          insert(rows: VacancyRequirementRecord[]) {
             state.insertedRequirements = rows;
             return Promise.resolve({
               error: null,
@@ -97,11 +110,9 @@ function createVacancyParseSupabaseMock(vacancy: Record<string, unknown> | null)
 
 async function loadHandler() {
   vi.resetModules();
-  vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
+  stubDefineEventHandler();
   vi.stubGlobal("getRouterParam", vi.fn().mockReturnValue("vacancy-123"));
-  return (await import("~/server/api/vacancies/[id]/parse.post")).default as (
-    event: unknown,
-  ) => Promise<unknown>;
+  return (await import("~/server/api/vacancies/[id]/parse.post")).default;
 }
 
 describe("POST /api/vacancies/[id]/parse", () => {
@@ -141,10 +152,7 @@ describe("POST /api/vacancies/[id]/parse", () => {
     createSupabaseServerClientMock.mockReturnValue(supabase);
 
     const handler = await loadHandler();
-    const result = (await handler({ context: {} })) as {
-      vacancyId: string;
-      requirementCount: number;
-    };
+    const result = await handler(createMockH3Event());
 
     expect(enforceRateLimitMock).toHaveBeenCalledWith(expect.any(Object), "vacancy-parse", {
       limit: 10,
@@ -241,9 +249,7 @@ describe("POST /api/vacancies/[id]/parse", () => {
     createSupabaseServerClientMock.mockReturnValue(supabase);
 
     const handler = await loadHandler();
-    const result = (await handler({ context: {} })) as {
-      requirementCount: number;
-    };
+    const result = await handler(createMockH3Event());
 
     expect(state.insertedRequirements).toBeNull();
     expect(result.requirementCount).toBe(0);

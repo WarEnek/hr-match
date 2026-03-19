@@ -1,3 +1,12 @@
+import type {
+  MatchAnalysis,
+  ResumeDocumentTree,
+  ResumeGenerationRecord,
+  VacancyRecord,
+} from "~/types";
+
+import { createMockH3Event, stubDefineEventHandler } from "~/tests/utils/h3";
+
 const {
   requireUserMock,
   requireProfileMock,
@@ -35,15 +44,34 @@ vi.mock("~/server/services/supabase/server", () => ({
   createSupabaseServerClient: createSupabaseServerClientMock,
 }));
 
+interface ResumeInsertPayload {
+  profile_id: string;
+  vacancy_id: string;
+  title: string;
+  status: string;
+  score: number;
+  document_tree: ResumeDocumentTree;
+  analysis_json: MatchAnalysis;
+}
+
+interface EvidenceInsertPayload {
+  resume_generation_id: string;
+  requirement_id: string;
+  source_type: string;
+  source_id: string;
+  score: number;
+  reason: string;
+}
+
 function createResumeRouteSupabaseMock(options?: {
-  vacancy?: Record<string, unknown> | null;
-  resume?: Record<string, unknown> | null;
+  vacancy?: Pick<VacancyRecord, "id" | "title"> | null;
+  resume?: Pick<ResumeGenerationRecord, "id" | "title"> | null;
   vacancyError?: { message: string } | null;
   evidenceInsertError?: { message: string } | null;
 }) {
   const state = {
-    resumeInsertPayload: null as Record<string, unknown> | null,
-    evidenceInsertPayload: null as Array<Record<string, unknown>> | null,
+    resumeInsertPayload: null as ResumeInsertPayload | null,
+    evidenceInsertPayload: null as EvidenceInsertPayload[] | null,
   };
 
   const vacancyResponse = {
@@ -87,7 +115,7 @@ function createResumeRouteSupabaseMock(options?: {
 
       if (table === "resume_generations") {
         return {
-          insert(payload: Record<string, unknown>) {
+          insert(payload: ResumeInsertPayload) {
             state.resumeInsertPayload = payload;
 
             return {
@@ -105,7 +133,7 @@ function createResumeRouteSupabaseMock(options?: {
 
       if (table === "evidence_links") {
         return {
-          insert(payload: Array<Record<string, unknown>>) {
+          insert(payload: EvidenceInsertPayload[]) {
             state.evidenceInsertPayload = payload;
             return Promise.resolve(evidenceInsertResponse);
           },
@@ -121,10 +149,8 @@ function createResumeRouteSupabaseMock(options?: {
 
 async function loadHandler() {
   vi.resetModules();
-  vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
-  return (await import("~/server/api/resume/generate.post")).default as (
-    event: unknown,
-  ) => Promise<unknown>;
+  stubDefineEventHandler();
+  return (await import("~/server/api/resume/generate.post")).default;
 }
 
 describe("POST /api/resume/generate", () => {
@@ -139,7 +165,7 @@ describe("POST /api/resume/generate", () => {
 
   it("generates a resume and stores evidence links", async () => {
     const { supabase, state } = createResumeRouteSupabaseMock();
-    const event = { context: { requestId: "req-1" } };
+    const event = createMockH3Event({}, { requestId: "req-1" });
     const requestBody = {
       vacancyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     };
@@ -183,10 +209,7 @@ describe("POST /api/resume/generate", () => {
     vi.stubGlobal("readBody", vi.fn().mockResolvedValue(requestBody));
 
     const handler = await loadHandler();
-    const result = (await handler(event)) as {
-      resume: { id: string };
-      evidenceLinks: Array<{ requirement_id: string }>;
-    };
+    const result = await handler(event);
 
     expect(enforceRateLimitMock).toHaveBeenCalledWith(event, "resume-generate", {
       limit: 10,
@@ -254,7 +277,7 @@ describe("POST /api/resume/generate", () => {
 
     const handler = await loadHandler();
 
-    await expect(handler({ context: {} })).rejects.toMatchObject({
+    await expect(handler(createMockH3Event())).rejects.toMatchObject({
       statusCode: 404,
       statusMessage: "Vacancy not found.",
     });

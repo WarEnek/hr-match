@@ -1,5 +1,4 @@
-import type { H3Event } from "h3";
-
+import { createMockH3Event } from "~/tests/utils/h3";
 const { launchMock, createSupabaseAdminClientMock, infoLoggerMock, errorLoggerMock } = vi.hoisted(
   () => ({
     launchMock: vi.fn(),
@@ -73,18 +72,20 @@ describe("exportResumeToPdf", () => {
       },
     });
 
-    const event = {
-      context: { requestId: "req-1" },
-      path: "/api/export/pdf/resume-1",
-      method: "POST",
-      node: {
-        req: {
-          headers: {
-            cookie: "sb-access-token=123",
+    const event = createMockH3Event(
+      {
+        path: "/api/export/pdf/resume-1",
+        method: "POST",
+        node: {
+          req: {
+            headers: {
+              cookie: "sb-access-token=123",
+            },
           },
         },
       },
-    } as unknown as H3Event;
+      { requestId: "req-1" },
+    );
 
     const result = await exportResumeToPdf(
       event,
@@ -142,12 +143,13 @@ describe("exportResumeToPdf", () => {
 
     await expect(
       exportResumeToPdf(
-        {
-          context: { requestId: "req-2" },
-          path: "/api/export/pdf/resume-1",
-          method: "POST",
-          node: { req: { headers: {} } },
-        } as unknown as H3Event,
+        createMockH3Event(
+          {
+            path: "/api/export/pdf/resume-1",
+            method: "POST",
+          },
+          { requestId: "req-2" },
+        ),
         "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
         "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       ),

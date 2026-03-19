@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { H3Event } from "h3";
 
 import { parseVacancyText } from "~/server/services/parser/vacancy-parser";
+import { createMockH3Event } from "~/tests/utils/h3";
 import { requestStructuredCompletion } from "~/server/services/novita/client";
 import { getResolvedAiSettings } from "~/server/services/novita/settings";
 
@@ -23,7 +23,7 @@ vi.mock("~/server/utils/logger", () => ({
 }));
 
 describe("parseVacancyText", () => {
-  const event = { context: {}, path: "/api/test", method: "POST" } as unknown as H3Event;
+  const event = createMockH3Event();
 
   beforeEach(() => {
     vi.clearAllMocks();

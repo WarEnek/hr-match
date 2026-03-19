@@ -1,7 +1,16 @@
-import type { H3Event } from "h3";
-
-import type { MatchAnalysis } from "~/types";
+import type {
+  CertificationRecord,
+  ExperienceBulletRecord,
+  ExperienceRecord,
+  MatchAnalysis,
+  ProfileRecord,
+  ProjectBulletRecord,
+  ProjectRecord,
+  SkillRecord,
+  VacancyRecord,
+} from "~/types";
 import { composeResumeDocument } from "~/server/services/composer/resume";
+import { createMockH3Event } from "~/tests/utils/h3";
 
 const {
   requestStructuredCompletionMock,
@@ -36,16 +45,27 @@ vi.mock("~/server/utils/logger", () => ({
   buildRequestLogContext: vi.fn(() => ({})),
 }));
 
-function createSupabaseMock(tableData: Record<string, unknown>) {
+interface ComposerSupabaseFixture {
+  profiles: ProfileRecord;
+  vacancies: VacancyRecord;
+  skills: SkillRecord[];
+  experiences: ExperienceRecord[];
+  experience_bullets: ExperienceBulletRecord[];
+  projects: ProjectRecord[];
+  project_bullets: ProjectBulletRecord[];
+  certifications: CertificationRecord[];
+}
+
+function createSupabaseMock(tableData: ComposerSupabaseFixture) {
   return {
-    from(tableName: string) {
+    from(tableName: keyof ComposerSupabaseFixture) {
       const currentData = tableData[tableName];
       const response = { data: currentData, error: null };
       const builder = {
-        then(resolve: (value: typeof response) => unknown) {
+        then<TResult>(resolve: (value: typeof response) => TResult | PromiseLike<TResult>) {
           return Promise.resolve(response).then(resolve);
         },
-        catch(reject: (reason: unknown) => unknown) {
+        catch<TResult>(reject: (reason: unknown) => TResult | PromiseLike<TResult>) {
           return Promise.resolve(response).catch(reject);
         },
         finally(onFinally: () => void) {
@@ -71,11 +91,10 @@ function createSupabaseMock(tableData: Record<string, unknown>) {
 }
 
 describe("composeResumeDocument", () => {
-  const event = {
-    context: {},
+  const event = createMockH3Event({
     path: "/api/resume/generate",
     method: "POST",
-  } as unknown as H3Event;
+  });
   const analysis: MatchAnalysis = {
     overall_score: 0.87,
     must_have_coverage: 0.8,
@@ -103,6 +122,7 @@ describe("composeResumeDocument", () => {
       createSupabaseMock({
         profiles: {
           id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          user_id: "user-1",
           full_name: "Jane Doe",
           headline: "Senior Frontend Engineer",
           email: "jane@example.com",
@@ -112,25 +132,33 @@ describe("composeResumeDocument", () => {
           github_url: "https://github.com/jane",
           website_url: "https://jane.dev",
           summary_default: "Experienced frontend engineer.",
+          created_at: "2024-01-01T00:00:00.000Z",
+          updated_at: "2024-01-01T00:00:00.000Z",
         },
         vacancies: {
           id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
           title: "Staff Frontend Engineer",
           company: "Acme",
+          profile_id: "profile-1",
         },
         skills: [
           {
             id: "11111111-1111-4111-8111-111111111111",
+            profile_id: "profile-1",
             name: "TypeScript",
+            keywords: [],
           },
           {
             id: "22222222-2222-4222-8222-222222222222",
+            profile_id: "profile-1",
             name: "Nuxt",
+            keywords: [],
           },
         ],
         experiences: [
           {
             id: "33333333-3333-4333-8333-333333333333",
+            profile_id: "profile-1",
             company: "Acme",
             role_title: "Senior Frontend Engineer",
             location: "Remote",
@@ -143,17 +171,20 @@ describe("composeResumeDocument", () => {
           {
             id: "44444444-4444-4444-8444-444444444444",
             experience_id: "33333333-3333-4333-8333-333333333333",
+            text_raw: "Built Nuxt 3 applications with TypeScript.",
             text_refined: "Built Nuxt 3 applications with TypeScript.",
           },
           {
             id: "55555555-5555-4555-8555-555555555555",
             experience_id: "33333333-3333-4333-8333-333333333333",
+            text_raw: "Improved SSR performance for customer-facing flows.",
             text_refined: "Improved SSR performance for customer-facing flows.",
           },
         ],
         projects: [
           {
             id: "66666666-6666-4666-8666-666666666666",
+            profile_id: "profile-1",
             title: "Platform Rewrite",
             description: "Migrated the frontend stack.",
             url: "https://example.com/project",
@@ -163,12 +194,14 @@ describe("composeResumeDocument", () => {
           {
             id: "77777777-7777-4777-8777-777777777777",
             project_id: "66666666-6666-4666-8666-666666666666",
+            text_raw: "Led a Nuxt migration for a legacy portal.",
             text_refined: "Led a Nuxt migration for a legacy portal.",
           },
         ],
         certifications: [
           {
             id: "88888888-8888-4888-8888-888888888888",
+            profile_id: "profile-1",
             name: "AWS Certified Developer",
             issuer: "AWS",
             issued_at: "2024-01-01",

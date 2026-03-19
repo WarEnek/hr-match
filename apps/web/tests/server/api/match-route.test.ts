@@ -1,3 +1,5 @@
+import { createMockH3Event, stubDefineEventHandler } from "~/tests/utils/h3";
+
 const { requireProfileMock, enforceRateLimitMock, runMatchPipelineMock } = vi.hoisted(() => ({
   requireProfileMock: vi.fn(),
   enforceRateLimitMock: vi.fn(),
@@ -22,7 +24,7 @@ describe("POST /api/match/[vacancyId]", () => {
   });
 
   it("passes the resolved profile and vacancy id into the match pipeline", async () => {
-    vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
+    stubDefineEventHandler();
     vi.stubGlobal("getRouterParam", vi.fn().mockReturnValue("vacancy-123"));
 
     requireProfileMock.mockResolvedValue({
@@ -35,8 +37,8 @@ describe("POST /api/match/[vacancyId]", () => {
     });
 
     const routeModule = await import("~/server/api/match/[vacancyId].post");
-    const handler = routeModule.default as (event: unknown) => Promise<unknown>;
-    const event = { context: {} };
+    const handler = routeModule.default;
+    const event = createMockH3Event();
 
     const result = await handler(event);
 

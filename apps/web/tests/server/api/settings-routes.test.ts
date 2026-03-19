@@ -1,3 +1,7 @@
+import type { AiSettingsRecord } from "~/types";
+
+import { createMockH3Event, stubDefineEventHandler } from "~/tests/utils/h3";
+
 const {
   requireUserMock,
   createSupabaseServerClientMock,
@@ -32,10 +36,14 @@ vi.mock("~/server/services/novita/client", () => ({
   requestStructuredCompletion: requestStructuredCompletionMock,
 }));
 
+interface UpsertOptions {
+  onConflict: string;
+}
+
 function createAiSettingsSupabaseMock(existingEncryptedKey = "stored-key") {
   const state = {
-    upsertPayload: null as Record<string, unknown> | null,
-    upsertOptions: null as Record<string, unknown> | null,
+    upsertPayload: null as AiSettingsRecord | null,
+    upsertOptions: null as UpsertOptions | null,
   };
 
   const supabase = {
@@ -60,7 +68,7 @@ function createAiSettingsSupabaseMock(existingEncryptedKey = "stored-key") {
             error: null,
           });
         },
-        upsert(payload: Record<string, unknown>, options: Record<string, unknown>) {
+        upsert(payload: AiSettingsRecord, options: UpsertOptions) {
           state.upsertPayload = payload;
           state.upsertOptions = options;
 
@@ -93,18 +101,14 @@ function createAiSettingsSupabaseMock(existingEncryptedKey = "stored-key") {
 
 async function loadPutHandler() {
   vi.resetModules();
-  vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
-  return (await import("~/server/api/settings/ai.put")).default as (
-    event: unknown,
-  ) => Promise<unknown>;
+  stubDefineEventHandler();
+  return (await import("~/server/api/settings/ai.put")).default;
 }
 
 async function loadTestHandler() {
   vi.resetModules();
-  vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
-  return (await import("~/server/api/settings/ai/test.post")).default as (
-    event: unknown,
-  ) => Promise<unknown>;
+  stubDefineEventHandler();
+  return (await import("~/server/api/settings/ai/test.post")).default;
 }
 
 describe("AI settings routes", () => {
@@ -142,9 +146,7 @@ describe("AI settings routes", () => {
     );
 
     const handler = await loadPutHandler();
-    const result = (await handler({ context: {} })) as {
-      settings: { has_api_key: boolean };
-    };
+    const result = await handler(createMockH3Event());
 
     expect(encryptSecretMock).toHaveBeenCalledWith("raw-key", "encryption-secret");
     expect(state.upsertOptions).toEqual({
@@ -180,7 +182,7 @@ describe("AI settings routes", () => {
     );
 
     const handler = await loadPutHandler();
-    await handler({ context: {} });
+    await handler(createMockH3Event());
 
     expect(encryptSecretMock).not.toHaveBeenCalled();
     expect(state.upsertPayload).toMatchObject({
@@ -209,10 +211,7 @@ describe("AI settings routes", () => {
     );
 
     const handler = await loadTestHandler();
-    const result = (await handler({ context: {} })) as {
-      ok: boolean;
-      message: string;
-    };
+    const result = await handler(createMockH3Event());
 
     expect(getResolvedAiSettingsMock).toHaveBeenCalledWith(expect.any(Object), "user-123");
     expect(requestStructuredCompletionMock).toHaveBeenCalledWith(

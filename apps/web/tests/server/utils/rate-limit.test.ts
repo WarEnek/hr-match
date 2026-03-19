@@ -1,20 +1,21 @@
-import type { H3Event } from "h3";
-
 import { clearRateLimitStore, enforceRateLimit } from "~/server/utils/rate-limit";
+import { createMockH3Event } from "~/tests/utils/h3";
 
 function createEvent(overrides?: { userId?: string; forwardedFor?: string }) {
-  return {
-    context: {
-      userId: overrides?.userId,
-    },
-    node: {
-      req: {
-        headers: {
-          "x-forwarded-for": overrides?.forwardedFor || "127.0.0.1",
+  return createMockH3Event(
+    {
+      node: {
+        req: {
+          headers: {
+            "x-forwarded-for": overrides?.forwardedFor || "127.0.0.1",
+          },
         },
       },
     },
-  } as unknown as H3Event;
+    {
+      userId: overrides?.userId,
+    },
+  );
 }
 
 describe("rate limiting", () => {
