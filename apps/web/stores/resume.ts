@@ -1,15 +1,15 @@
-export const useResumeStore = defineStore('resume', () => {
-  const resumes = ref<any[]>([])
-  const loading = ref(false)
+export const useResumeStore = defineStore("resume", () => {
+  const resumes = ref<any[]>([]);
+  const loading = ref(false);
 
   async function fetchResumes() {
-    loading.value = true
+    loading.value = true;
 
     try {
-      const response = await $fetch<{ resumes: any[] }>('/api/resume')
-      resumes.value = response.resumes
+      const response = await $fetch<{ resumes: any[] }>("/api/resume");
+      resumes.value = response.resumes;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
@@ -17,5 +17,5 @@ export const useResumeStore = defineStore('resume', () => {
     resumes,
     loading,
     fetchResumes,
-  }
-})
+  };
+});

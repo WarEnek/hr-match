@@ -1,17 +1,17 @@
-import type { ProfileRecord } from '~/types'
+import type { ProfileRecord } from "~/types";
 
-export const useProfileStore = defineStore('profile', () => {
-  const profile = ref<ProfileRecord | null>(null)
-  const loading = ref(false)
+export const useProfileStore = defineStore("profile", () => {
+  const profile = ref<ProfileRecord | null>(null);
+  const loading = ref(false);
 
   async function fetchProfile() {
-    loading.value = true
+    loading.value = true;
 
     try {
-      const response = await $fetch<{ profile: ProfileRecord | null }>('/api/profile')
-      profile.value = response.profile
+      const response = await $fetch<{ profile: ProfileRecord | null }>("/api/profile");
+      profile.value = response.profile;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
@@ -19,5 +19,5 @@ export const useProfileStore = defineStore('profile', () => {
     profile,
     loading,
     fetchProfile,
-  }
-})
+  };
+});

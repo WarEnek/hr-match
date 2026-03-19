@@ -1,15 +1,15 @@
-export const useVacancyStore = defineStore('vacancy', () => {
-  const vacancies = ref<any[]>([])
-  const loading = ref(false)
+export const useVacancyStore = defineStore("vacancy", () => {
+  const vacancies = ref<any[]>([]);
+  const loading = ref(false);
 
   async function fetchVacancies() {
-    loading.value = true
+    loading.value = true;
 
     try {
-      const response = await $fetch<{ vacancies: any[] }>('/api/vacancies')
-      vacancies.value = response.vacancies
+      const response = await $fetch<{ vacancies: any[] }>("/api/vacancies");
+      vacancies.value = response.vacancies;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
@@ -17,5 +17,5 @@ export const useVacancyStore = defineStore('vacancy', () => {
     vacancies,
     loading,
     fetchVacancies,
-  }
-})
+  };
+});

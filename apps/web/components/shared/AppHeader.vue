@@ -1,40 +1,40 @@
 <script setup lang="ts">
-const auth = useAuthStore()
-const route = useRoute()
-const loading = ref(false)
+const auth = useAuthStore();
+const route = useRoute();
+const loading = ref(false);
 
 onMounted(() => {
   if (!auth.initialized) {
-    auth.fetchSession()
+    auth.fetchSession();
   }
-})
+});
 
-const isAuthenticated = computed(() => Boolean(auth.user))
+const isAuthenticated = computed(() => Boolean(auth.user));
 
 async function handleLogout() {
-  loading.value = true
+  loading.value = true;
 
   try {
-    await auth.signOut()
-    await navigateTo('/login')
+    await auth.signOut();
+    await navigateTo("/login");
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 const links = computed(() => {
   if (!isAuthenticated.value) {
-    return []
+    return [];
   }
 
   return [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/profile', label: 'Profile' },
-    { to: '/vacancies', label: 'Vacancies' },
-    { to: '/resumes', label: 'Resumes' },
-    { to: '/settings/ai', label: 'AI Settings' },
-  ]
-})
+    { to: "/dashboard", label: "Dashboard" },
+    { to: "/profile", label: "Profile" },
+    { to: "/vacancies", label: "Vacancies" },
+    { to: "/resumes", label: "Resumes" },
+    { to: "/settings/ai", label: "AI Settings" },
+  ];
+});
 </script>
 
 <template>
@@ -56,11 +56,9 @@ const links = computed(() => {
     </nav>
 
     <div class="actions no-print">
-      <NuxtLink v-if="!isAuthenticated" class="button-secondary" to="/login">
-        Sign in
-      </NuxtLink>
+      <NuxtLink v-if="!isAuthenticated" class="button-secondary" to="/login"> Sign in </NuxtLink>
       <button v-else class="button-secondary" :disabled="loading" @click="handleLogout">
-        {{ loading ? 'Signing out...' : 'Logout' }}
+        {{ loading ? "Signing out..." : "Logout" }}
       </button>
     </div>
   </header>

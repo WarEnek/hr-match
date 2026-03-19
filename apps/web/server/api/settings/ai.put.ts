@@ -1,23 +1,23 @@
-import { createSupabaseServerClient } from '~/server/services/supabase/server'
-import { requireUser } from '~/server/utils/auth'
-import { encryptSecret } from '~/server/utils/crypto'
-import { createAppError } from '~/server/utils/errors'
-import { aiSettingsInputSchema } from '~/server/utils/schemas'
+import { createSupabaseServerClient } from "~/server/services/supabase/server";
+import { requireUser } from "~/server/utils/auth";
+import { encryptSecret } from "~/server/utils/crypto";
+import { createAppError } from "~/server/utils/errors";
+import { aiSettingsInputSchema } from "~/server/utils/schemas";
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const user = await requireUser(event)
-  const body = aiSettingsInputSchema.parse(await readBody(event))
-  const supabase = createSupabaseServerClient(event)
+  const config = useRuntimeConfig();
+  const user = await requireUser(event);
+  const body = aiSettingsInputSchema.parse(await readBody(event));
+  const supabase = createSupabaseServerClient(event);
   const { data: existing } = await supabase
-    .from('ai_settings')
-    .select('id, api_key_encrypted')
-    .eq('user_id', user.id)
-    .maybeSingle()
+    .from("ai_settings")
+    .select("id, api_key_encrypted")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const encryptedApiKey = body.api_key
     ? encryptSecret(body.api_key, config.encryptionKey)
-    : existing?.api_key_encrypted || null
+    : existing?.api_key_encrypted || null;
 
   const payload = {
     user_id: user.id,
@@ -27,16 +27,16 @@ export default defineEventHandler(async (event) => {
     api_key_encrypted: encryptedApiKey,
     temperature: body.temperature,
     max_tokens: body.max_tokens,
-  }
+  };
 
   const { data, error } = await supabase
-    .from('ai_settings')
-    .upsert(payload, { onConflict: 'user_id' })
-    .select('*')
-    .single()
+    .from("ai_settings")
+    .upsert(payload, { onConflict: "user_id" })
+    .select("*")
+    .single();
 
   if (error) {
-    throw createAppError(500, 'Failed to save AI settings.', { cause: error.message })
+    throw createAppError(500, "Failed to save AI settings.", { cause: error.message });
   }
 
   return {
@@ -48,5 +48,5 @@ export default defineEventHandler(async (event) => {
       max_tokens: data.max_tokens,
       has_api_key: Boolean(data.api_key_encrypted),
     },
-  }
-})
+  };
+});

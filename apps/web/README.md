@@ -1,75 +1,44 @@
-# Nuxt Minimal Starter
+# hr-match web app
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Nuxt 3 application for ATS-safe CV generation.
 
 ## Setup
 
-Make sure to install dependencies:
+Install dependencies with Bun:
 
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
 bun install
 ```
 
-## Development Server
+## Development
 
 Start the development server on `http://localhost:3000`:
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
 bun run dev
+```
+
+## Quality checks
+
+```bash
+bun run lint
+bun run format:check
+bun run typecheck
+bun run check
+```
+
+To apply automatic fixes and formatting:
+
+```bash
+bun run lint:fix
+bun run format
 ```
 
 ## Production
 
-Build the application for production:
+Build and preview locally:
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
 bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
 bun run preview
 ```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.

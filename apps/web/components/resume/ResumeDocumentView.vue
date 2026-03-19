@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ResumeDocumentTree } from '~/types'
+import type { ResumeDocumentTree } from "~/types";
 
 defineProps<{
-  documentTree: ResumeDocumentTree
-}>()
+  documentTree: ResumeDocumentTree;
+}>();
 </script>
 
 <template>
@@ -27,7 +27,7 @@ defineProps<{
 
     <section v-if="documentTree.skills.length">
       <h2>Core Skills</h2>
-      <p>{{ documentTree.skills.join(', ') }}</p>
+      <p>{{ documentTree.skills.join(", ") }}</p>
     </section>
 
     <section v-if="documentTree.experiences.length">
@@ -52,7 +52,9 @@ defineProps<{
         <article v-for="project in documentTree.projects" :key="project.id">
           <div class="project-header">
             <strong>{{ project.title }}</strong>
-            <a v-if="project.url" :href="project.url" target="_blank" rel="noreferrer">{{ project.url }}</a>
+            <a v-if="project.url" :href="project.url" target="_blank" rel="noreferrer">{{
+              project.url
+            }}</a>
           </div>
           <p>{{ project.description }}</p>
           <ul v-if="project.bullets.length">
@@ -66,7 +68,8 @@ defineProps<{
       <h2>Certifications</h2>
       <ul>
         <li v-for="certification in documentTree.certifications" :key="certification.id">
-          {{ certification.name }}<span v-if="certification.issuer"> - {{ certification.issuer }}</span>
+          {{ certification.name
+          }}<span v-if="certification.issuer"> - {{ certification.issuer }}</span>
         </li>
       </ul>
     </section>
@@ -80,7 +83,7 @@ defineProps<{
 
     <section v-if="documentTree.languages.length">
       <h2>Languages</h2>
-      <p>{{ documentTree.languages.join(', ') }}</p>
+      <p>{{ documentTree.languages.join(", ") }}</p>
     </section>
   </article>
 </template>

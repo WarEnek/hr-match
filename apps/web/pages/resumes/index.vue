@@ -1,15 +1,15 @@
 <script setup lang="ts">
-const auth = useAuthStore()
+const auth = useAuthStore();
 
 if (!auth.initialized) {
-  await auth.fetchSession()
+  await auth.fetchSession();
 }
 
 if (!auth.user) {
-  await navigateTo('/login')
+  await navigateTo("/login");
 }
 
-const { data } = await useFetch('/api/resume')
+const { data } = await useFetch("/api/resume");
 </script>
 
 <template>
@@ -22,7 +22,7 @@ const { data } = await useFetch('/api/resume')
         <li v-for="resume in data.resumes" :key="resume.id">
           <NuxtLink :to="`/resumes/${resume.id}`">
             <strong>{{ resume.title }}</strong>
-            <p class="muted">Score: {{ resume.score ?? 'n/a' }}</p>
+            <p class="muted">Score: {{ resume.score ?? "n/a" }}</p>
           </NuxtLink>
         </li>
       </ul>

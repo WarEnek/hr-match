@@ -1,45 +1,45 @@
 <script setup lang="ts">
-const auth = useAuthStore()
-const mode = ref<'sign_in' | 'sign_up'>('sign_in')
+const auth = useAuthStore();
+const mode = ref<"sign_in" | "sign_up">("sign_in");
 const form = reactive({
-  email: '',
-  password: '',
-})
-const errorMessage = ref('')
+  email: "",
+  password: "",
+});
+const errorMessage = ref("");
 
 if (!auth.initialized) {
-  await auth.fetchSession()
+  await auth.fetchSession();
 }
 
 if (auth.user) {
-  await navigateTo('/dashboard')
+  await navigateTo("/dashboard");
 }
 
 const submitButtonLabel = computed(() => {
   if (auth.loading) {
-    return 'Working...'
+    return "Working...";
   }
 
-  if (mode.value === 'sign_in') {
-    return 'Continue'
+  if (mode.value === "sign_in") {
+    return "Continue";
   }
 
-  return 'Create account'
-})
+  return "Create account";
+});
 
 async function submit() {
-  errorMessage.value = ''
+  errorMessage.value = "";
 
   try {
-    if (mode.value === 'sign_in') {
-      await auth.signIn(form)
+    if (mode.value === "sign_in") {
+      await auth.signIn(form);
     } else {
-      await auth.signUp(form)
+      await auth.signUp(form);
     }
 
-    await navigateTo('/dashboard')
+    await navigateTo("/dashboard");
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Authentication failed.'
+    errorMessage.value = error instanceof Error ? error.message : "Authentication failed.";
   }
 }
 </script>
@@ -52,25 +52,33 @@ async function submit() {
         Supabase Auth is configured through server-side Nuxt API routes and SSR cookies.
       </p>
       <div class="actions">
-        <button class="button-secondary" :class="{ button: mode === 'sign_in' }" @click="mode = 'sign_in'">
+        <button
+          class="button-secondary"
+          :class="{ button: mode === 'sign_in' }"
+          @click="mode = 'sign_in'"
+        >
           Sign in
         </button>
-        <button class="button-secondary" :class="{ button: mode === 'sign_up' }" @click="mode = 'sign_up'">
+        <button
+          class="button-secondary"
+          :class="{ button: mode === 'sign_up' }"
+          @click="mode = 'sign_up'"
+        >
           Create account
         </button>
       </div>
-      <div class="form-grid" style="margin-top: 1rem;">
+      <div class="form-grid" style="margin-top: 1rem">
         <label class="field full">
           <span>Email</span>
-          <input v-model="form.email" type="email" autocomplete="email" required>
+          <input v-model="form.email" type="email" autocomplete="email" required />
         </label>
         <label class="field full">
           <span>Password</span>
-          <input v-model="form.password" type="password" autocomplete="current-password" required>
+          <input v-model="form.password" type="password" autocomplete="current-password" required />
         </label>
       </div>
-      <p v-if="errorMessage" class="status-error" style="margin-top: 1rem;">{{ errorMessage }}</p>
-      <div class="actions" style="margin-top: 1rem;">
+      <p v-if="errorMessage" class="status-error" style="margin-top: 1rem">{{ errorMessage }}</p>
+      <div class="actions" style="margin-top: 1rem">
         <button class="button" :disabled="auth.loading" @click="submit">
           {{ submitButtonLabel }}
         </button>

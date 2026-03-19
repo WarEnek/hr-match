@@ -1,9 +1,9 @@
-declare module 'h3' {
+declare module "h3" {
   interface H3EventContext {
-    requestId?: string
-    startedAt?: number
-    userId?: string
+    requestId?: string;
+    startedAt?: number;
+    userId?: string;
   }
 }
 
-export {}
+export {};

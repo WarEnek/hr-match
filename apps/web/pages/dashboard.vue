@@ -1,19 +1,19 @@
 <script setup lang="ts">
-const auth = useAuthStore()
+const auth = useAuthStore();
 
 if (!auth.initialized) {
-  await auth.fetchSession()
+  await auth.fetchSession();
 }
 
 if (!auth.user) {
-  await navigateTo('/login')
+  await navigateTo("/login");
 }
 
 const [{ data: profileData }, { data: vacancyData }, { data: resumeData }] = await Promise.all([
-  useFetch<{ profile: { full_name?: string } | null }>('/api/profile'),
-  useFetch<{ vacancies: Array<{ id: string }> }>('/api/vacancies'),
-  useFetch<{ resumes: Array<{ id: string }> }>('/api/resume'),
-])
+  useFetch<{ profile: { full_name?: string } | null }>("/api/profile"),
+  useFetch<{ vacancies: Array<{ id: string }> }>("/api/vacancies"),
+  useFetch<{ resumes: Array<{ id: string }> }>("/api/resume"),
+]);
 </script>
 
 <template>
@@ -46,7 +46,7 @@ const [{ data: profileData }, { data: vacancyData }, { data: resumeData }] = awa
     <section class="page-grid">
       <div class="panel">
         <h2>Profile</h2>
-        <p class="muted">{{ profileData?.profile?.full_name || 'No profile created yet.' }}</p>
+        <p class="muted">{{ profileData?.profile?.full_name || "No profile created yet." }}</p>
         <div class="actions">
           <NuxtLink class="button" to="/profile">Open profile</NuxtLink>
         </div>
@@ -54,7 +54,9 @@ const [{ data: profileData }, { data: vacancyData }, { data: resumeData }] = awa
 
       <div class="panel">
         <h2>Vacancies</h2>
-        <p class="muted">Add a vacancy, parse it through Novita, then inspect requirement coverage.</p>
+        <p class="muted">
+          Add a vacancy, parse it through Novita, then inspect requirement coverage.
+        </p>
         <div class="actions">
           <NuxtLink class="button" to="/vacancies">Manage vacancies</NuxtLink>
         </div>
@@ -62,7 +64,9 @@ const [{ data: profileData }, { data: vacancyData }, { data: resumeData }] = awa
 
       <div class="panel">
         <h2>Resumes</h2>
-        <p class="muted">Review generated resume drafts, evidence mapping, and PDF export status.</p>
+        <p class="muted">
+          Review generated resume drafts, evidence mapping, and PDF export status.
+        </p>
         <div class="actions">
           <NuxtLink class="button-secondary" to="/resumes">Open history</NuxtLink>
         </div>

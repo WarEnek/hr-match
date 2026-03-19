@@ -1,16 +1,16 @@
 export function useResume() {
-  const resumes = useState<any[]>('resume-list', () => [])
-  const pending = useState<boolean>('resume-pending', () => false)
+  const resumes = useState<any[]>("resume-list", () => []);
+  const pending = useState<boolean>("resume-pending", () => false);
 
   async function refresh() {
-    pending.value = true
+    pending.value = true;
 
     try {
-      const response = await $fetch<{ resumes: any[] }>('/api/resume')
-      resumes.value = response.resumes
-      return response.resumes
+      const response = await $fetch<{ resumes: any[] }>("/api/resume");
+      resumes.value = response.resumes;
+      return response.resumes;
     } finally {
-      pending.value = false
+      pending.value = false;
     }
   }
 
@@ -18,5 +18,5 @@ export function useResume() {
     resumes,
     pending,
     refresh,
-  }
+  };
 }

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-const auth = useAuthStore()
+const auth = useAuthStore();
 
 if (!auth.initialized) {
-  await auth.fetchSession()
+  await auth.fetchSession();
 }
 
 if (auth.user) {
-  await navigateTo('/dashboard')
+  await navigateTo("/dashboard");
 } else {
-  await navigateTo('/login')
+  await navigateTo("/login");
 }
 </script>
 

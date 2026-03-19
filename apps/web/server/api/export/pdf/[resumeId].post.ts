@@ -1,59 +1,62 @@
-import { exportResumeToPdf } from '~/server/services/pdf/export'
-import { createSupabaseServerClient } from '~/server/services/supabase/server'
-import { requireProfile, requireUser } from '~/server/utils/auth'
-import { createAppError } from '~/server/utils/errors'
-import { enforceRateLimit } from '~/server/utils/rate-limit'
+import { exportResumeToPdf } from "~/server/services/pdf/export";
+import { createSupabaseServerClient } from "~/server/services/supabase/server";
+import { requireProfile, requireUser } from "~/server/utils/auth";
+import { createAppError } from "~/server/utils/errors";
+import { enforceRateLimit } from "~/server/utils/rate-limit";
 
 export default defineEventHandler(async (event) => {
-  const user = await requireUser(event)
-  const profile = await requireProfile(event)
-  const resumeId = getRouterParam(event, 'resumeId') as string
-  const supabase = createSupabaseServerClient(event)
-  enforceRateLimit(event, 'resume-export', { limit: 10, windowMs: 60_000 })
+  const user = await requireUser(event);
+  const profile = await requireProfile(event);
+  const resumeId = getRouterParam(event, "resumeId") as string;
+  const supabase = createSupabaseServerClient(event);
+  enforceRateLimit(event, "resume-export", { limit: 10, windowMs: 60_000 });
 
   const { data: resume, error: resumeError } = await supabase
-    .from('resume_generations')
-    .select('*')
-    .eq('id', resumeId)
-    .eq('profile_id', profile.id)
-    .maybeSingle()
+    .from("resume_generations")
+    .select("*")
+    .eq("id", resumeId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
 
   if (resumeError || !resume) {
-    throw createAppError(404, 'Resume generation not found.')
+    throw createAppError(404, "Resume generation not found.");
   }
 
   const { data: job, error: jobError } = await supabase
-    .from('export_jobs')
+    .from("export_jobs")
     .insert({
       resume_generation_id: resumeId,
-      status: 'running',
+      status: "running",
     })
-    .select('*')
-    .single()
+    .select("*")
+    .single();
 
   if (jobError || !job) {
-    throw createAppError(500, 'Failed to create export job.', { cause: jobError?.message })
+    throw createAppError(500, "Failed to create export job.", { cause: jobError?.message });
   }
 
   try {
-    const { pdfPath } = await exportResumeToPdf(event, resumeId, user.id)
-    await supabase.from('resume_generations').update({ pdf_path: pdfPath, status: 'exported' }).eq('id', resumeId)
-    await supabase.from('export_jobs').update({ status: 'completed' }).eq('id', job.id)
+    const { pdfPath } = await exportResumeToPdf(event, resumeId, user.id);
+    await supabase
+      .from("resume_generations")
+      .update({ pdf_path: pdfPath, status: "exported" })
+      .eq("id", resumeId);
+    await supabase.from("export_jobs").update({ status: "completed" }).eq("id", job.id);
 
     return {
       ok: true,
       jobId: job.id,
       pdfPath,
-    }
+    };
   } catch (error) {
     await supabase
-      .from('export_jobs')
+      .from("export_jobs")
       .update({
-        status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown export error',
+        status: "failed",
+        error_message: error instanceof Error ? error.message : "Unknown export error",
       })
-      .eq('id', job.id)
+      .eq("id", job.id);
 
-    throw error
+    throw error;
   }
-})
+});
