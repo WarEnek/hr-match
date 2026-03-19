@@ -1,10 +1,12 @@
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { createAppError } from "~/server/utils/errors";
 import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
+import { enforceRateLimit } from "~/server/utils/rate-limit";
 import { authSessionSchema } from "~/server/utils/schemas";
 
 export default defineEventHandler(async (event) => {
   const body = authSessionSchema.parse(await readBody(event));
+  enforceRateLimit(event, "auth-session", { limit: 30, windowMs: 900_000 });
   const supabase = createSupabaseServerClient(event);
 
   const response =

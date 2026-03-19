@@ -17,6 +17,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       NOVITA_API_KEY: ${NOVITA_API_KEY:-}
       NOVITA_BASE_URL: ${NOVITA_BASE_URL:-https://api.novita.ai/openai}
+      NOVITA_ALLOWED_HOSTS: ${NOVITA_ALLOWED_HOSTS:-api.novita.ai}
       NOVITA_MODEL: ${NOVITA_MODEL:-google/gemma-3-12b-it}
       PDF_STORAGE_BUCKET: ${PDF_STORAGE_BUCKET:-resumes}
       PDF_BASE_PATH: ${PDF_BASE_PATH:-exports}

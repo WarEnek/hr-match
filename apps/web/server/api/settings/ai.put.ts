@@ -2,12 +2,17 @@ import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireUser } from "~/server/utils/auth";
 import { encryptSecret } from "~/server/utils/crypto";
 import { createAppError } from "~/server/utils/errors";
+import { assertSafeLlmBaseUrl, parseAllowedLlmHosts } from "~/server/utils/safe-llm-url";
 import { aiSettingsInputSchema } from "~/server/utils/schemas";
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const user = await requireUser(event);
   const body = aiSettingsInputSchema.parse(await readBody(event));
+  assertSafeLlmBaseUrl(body.base_url, {
+    allowedHosts: parseAllowedLlmHosts(config.novitaAllowedHosts),
+    allowHttpLocalhost: Boolean(config.allowInsecureHttpLlm),
+  });
   const supabase = createSupabaseServerClient(event);
   const { data: existing } = await supabase
     .from("ai_settings")

@@ -35,6 +35,12 @@ bun run lint:fix
 bun run format
 ```
 
+## Security-related environment
+
+- `NOVITA_ALLOWED_HOSTS` — comma-separated hostnames allowed for outbound LLM HTTP calls (must include the host of `NOVITA_BASE_URL`).
+- `ALLOW_INSECURE_LLM_HTTP=true` — only in development: allows `http://127.0.0.1` / `http://localhost` when those hosts are listed in `NOVITA_ALLOWED_HOSTS`.
+- `INTERNAL_WORKER_TOKEN` — required for `POST /api/internal/embeddings/run`; use a dedicated secret (do not reuse `NUXT_SESSION_SECRET`).
+
 ## Production
 
 Build and preview locally:

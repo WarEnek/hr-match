@@ -132,6 +132,9 @@ describe("AI settings routes", () => {
 
     vi.stubGlobal("useRuntimeConfig", () => ({
       encryptionKey: "encryption-secret",
+      novitaAllowedHosts: "api.novita.ai",
+      allowInsecureHttpLlm: false,
+      novitaBaseUrl: "https://api.novita.ai/openai",
     }));
     vi.stubGlobal(
       "readBody",
@@ -168,6 +171,9 @@ describe("AI settings routes", () => {
 
     vi.stubGlobal("useRuntimeConfig", () => ({
       encryptionKey: "encryption-secret",
+      novitaAllowedHosts: "api.novita.ai",
+      allowInsecureHttpLlm: false,
+      novitaBaseUrl: "https://api.novita.ai/openai",
     }));
     vi.stubGlobal(
       "readBody",
@@ -198,6 +204,11 @@ describe("AI settings routes", () => {
       summary: "provider is reachable",
     });
 
+    vi.stubGlobal("useRuntimeConfig", () => ({
+      novitaAllowedHosts: "api.novita.ai",
+      allowInsecureHttpLlm: false,
+      novitaBaseUrl: "https://api.novita.ai/openai",
+    }));
     vi.stubGlobal(
       "readBody",
       vi.fn().mockResolvedValue({
