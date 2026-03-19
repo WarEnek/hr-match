@@ -20,6 +20,50 @@ function normalizeVector(vector: number[]): number[] {
   return vector.map((value) => Number((value / magnitude).toFixed(6)));
 }
 
+export function parseStoredEmbedding(value: string | number[] | null | undefined): number[] | null {
+  if (!value) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => Number(entry));
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+    return null;
+  }
+
+  const innerValue = trimmed.slice(1, -1).trim();
+  if (!innerValue) {
+    return [];
+  }
+
+  return innerValue.split(",").map((entry) => Number(entry.trim()));
+}
+
+export function cosineSimilarity(left: number[] | null, right: number[] | null): number {
+  if (!left || !right || !left.length || !right.length || left.length !== right.length) {
+    return 0;
+  }
+
+  let dotProduct = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+
+  for (let index = 0; index < left.length; index += 1) {
+    dotProduct += left[index] * right[index];
+    leftMagnitude += left[index] * left[index];
+    rightMagnitude += right[index] * right[index];
+  }
+
+  if (!leftMagnitude || !rightMagnitude) {
+    return 0;
+  }
+
+  return dotProduct / (Math.sqrt(leftMagnitude) * Math.sqrt(rightMagnitude));
+}
+
 export function buildEmbeddingInput(text: string, tags: string[] = []): string {
   return [
     text.trim(),

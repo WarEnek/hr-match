@@ -173,4 +173,49 @@ describe("buildMatchArtifacts", () => {
 
     throw new Error("Expected buildMatchArtifacts to reject empty requirements.");
   });
+
+  it("uses embedding similarity when keyword overlap is weak", () => {
+    const result = buildMatchArtifacts({
+      vacancy: {
+        parsed_json: {
+          title: "Platform Engineer",
+          company: "Acme",
+          seniority: "senior",
+          domain: ["platform"],
+          must_have: ["Distributed systems"],
+          nice_to_have: [],
+          responsibilities: [],
+          soft_signals: [],
+        },
+      },
+      requirements: [
+        {
+          id: requirementIdOne,
+          vacancy_id: "vacancy-3",
+          label: "Distributed systems",
+          type: "must_have",
+          embedding: "[1,0,0]",
+        },
+      ],
+      skills: [],
+      experienceBullets: [
+        {
+          id: "99999999-9999-4999-8999-999999999999",
+          experience_id: "experience-2",
+          text_raw: "Built event-driven platform services across multiple teams.",
+          text_refined: "Built event-driven platform services across multiple teams.",
+          tech_tags: ["Kafka"],
+          domain_tags: ["platform"],
+          result_tags: ["scalability"],
+          seniority_tags: ["senior"],
+          embedding: "[1,0,0]",
+        },
+      ],
+      projectBullets: [],
+    });
+
+    expect(result.analysis.semantic_similarity).toBeGreaterThan(0.9);
+    expect(result.analysis.requirements[0]?.coverage_score).toBeGreaterThan(0.5);
+    expect(result.analysis.requirements[0]?.evidence[0]?.reason).toContain("semantic");
+  });
 });

@@ -11,6 +11,12 @@ import type {
   ProjectBulletRecord,
 } from "~/types";
 
+import {
+  buildEmbeddingInput,
+  cosineSimilarity,
+  generateDeterministicEmbedding,
+  parseStoredEmbedding,
+} from "~/server/services/embeddings/generator";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { createAppError } from "~/server/utils/errors";
 import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
@@ -21,6 +27,8 @@ interface CandidateEvidence {
   source_id: string;
   text: string;
   tags: string[];
+  embedding: number[];
+  hasStoredEmbedding: boolean;
 }
 
 interface MatchComputationInput {
@@ -35,6 +43,8 @@ interface MatchArtifacts {
   analysis: MatchAnalysis;
   evidenceLinks: EvidenceLinkRecord[];
   candidateEvidenceCount: number;
+  candidateEvidenceWithStoredEmbeddings: number;
+  requirementsWithStoredEmbeddings: number;
 }
 
 const synonymMap: Record<string, string[]> = {
@@ -93,6 +103,10 @@ function computeOverlapScore(requirement: string, evidence: CandidateEvidence) {
   return Math.min(1, coverage);
 }
 
+function buildFallbackEmbedding(text: string, tags: string[]): number[] {
+  return generateDeterministicEmbedding(buildEmbeddingInput(text, tags));
+}
+
 export function buildMatchArtifacts({
   vacancy,
   requirements,
@@ -110,10 +124,13 @@ export function buildMatchArtifacts({
       source_id: skill.id,
       text: `${skill.name} ${skill.level || ""}`.trim(),
       tags: skill.keywords || [],
+      embedding: buildFallbackEmbedding(
+        `${skill.name} ${skill.level || ""}`.trim(),
+        skill.keywords || [],
+      ),
+      hasStoredEmbedding: false,
     })),
     ...(experienceBullets || []).map((bullet) => ({
-      source_type: "experience_bullet" as const,
-      source_id: bullet.id,
       text: bullet.text_refined || bullet.text_raw || "",
       tags: [
         ...(bullet.tech_tags || []),
@@ -121,34 +138,66 @@ export function buildMatchArtifacts({
         ...(bullet.result_tags || []),
         ...(bullet.seniority_tags || []),
       ],
+      source_type: "experience_bullet" as const,
+      source_id: bullet.id,
+      embedding:
+        parseStoredEmbedding(bullet.embedding) ||
+        buildFallbackEmbedding(bullet.text_refined || bullet.text_raw || "", [
+          ...(bullet.tech_tags || []),
+          ...(bullet.domain_tags || []),
+          ...(bullet.result_tags || []),
+          ...(bullet.seniority_tags || []),
+        ]),
+      hasStoredEmbedding: Boolean(parseStoredEmbedding(bullet.embedding)),
     })),
     ...(projectBullets || []).map((bullet) => ({
-      source_type: "project_bullet" as const,
-      source_id: bullet.id,
       text: bullet.text_refined || bullet.text_raw || "",
       tags: [
         ...(bullet.tech_tags || []),
         ...(bullet.domain_tags || []),
         ...(bullet.result_tags || []),
       ],
+      source_type: "project_bullet" as const,
+      source_id: bullet.id,
+      embedding:
+        parseStoredEmbedding(bullet.embedding) ||
+        buildFallbackEmbedding(bullet.text_refined || bullet.text_raw || "", [
+          ...(bullet.tech_tags || []),
+          ...(bullet.domain_tags || []),
+          ...(bullet.result_tags || []),
+        ]),
+      hasStoredEmbedding: Boolean(parseStoredEmbedding(bullet.embedding)),
     })),
   ].filter((item) => item.text.trim().length > 0);
 
+  const candidateEvidenceWithStoredEmbeddings = candidateEvidence.filter(
+    (item) => item.hasStoredEmbedding,
+  ).length;
+
   const requirementSummaries = requirements.map((requirement) => {
+    const requirementEmbedding =
+      parseStoredEmbedding(requirement.embedding) ||
+      buildFallbackEmbedding(requirement.label, [requirement.normalized_label || ""]);
+    const requirementHasStoredEmbedding = Boolean(parseStoredEmbedding(requirement.embedding));
+
     const ranked = candidateEvidence
       .map((item) => {
-        const score = computeOverlapScore(requirement.label, item);
+        const keywordScore = computeOverlapScore(requirement.label, item);
+        const semanticScore = Math.max(0, cosineSimilarity(requirementEmbedding, item.embedding));
+        const score = Number((0.45 * keywordScore + 0.55 * semanticScore).toFixed(4));
         let reason = "No meaningful overlap detected.";
 
         if (score > 0) {
-          reason = `Matched by keyword overlap against: ${item.text.slice(0, 140)}`;
+          reason = `Keyword ${keywordScore.toFixed(2)} / semantic ${semanticScore.toFixed(2)} against: ${item.text.slice(0, 140)}`;
         }
 
         return {
           requirement_id: requirement.id,
           source_type: item.source_type,
           source_id: item.source_id,
-          score: Number(score.toFixed(4)),
+          score,
+          keyword_score: Number(keywordScore.toFixed(4)),
+          semantic_score: Number(semanticScore.toFixed(4)),
           reason,
         };
       })
@@ -164,6 +213,9 @@ export function buildMatchArtifacts({
       type: requirement.type,
       coverage_score: Number(bestScore.toFixed(4)),
       evidence: ranked,
+      semantic_top_score: ranked[0]?.semantic_score || 0,
+      keyword_top_score: ranked[0]?.keyword_score || 0,
+      has_stored_embedding: requirementHasStoredEmbedding,
     };
   });
 
@@ -177,8 +229,14 @@ export function buildMatchArtifacts({
   const averageCoverage = allCoverageScores.length
     ? allCoverageScores.reduce((sum, value) => sum + value, 0) / allCoverageScores.length
     : 0;
-  const keywordCoverage = averageCoverage;
-  const semanticSimilarity = Math.min(1, averageCoverage * 0.9 + 0.05);
+  const keywordCoverage = requirementSummaries.length
+    ? requirementSummaries.reduce((sum, item) => sum + item.keyword_top_score, 0) /
+      requirementSummaries.length
+    : 0;
+  const semanticSimilarity = requirementSummaries.length
+    ? requirementSummaries.reduce((sum, item) => sum + item.semantic_top_score, 0) /
+      requirementSummaries.length
+    : 0;
   const leadingEvidenceScoreSum = requirementSummaries.reduce((sum, item) => {
     if (!item.evidence.length) {
       return sum;
@@ -187,7 +245,14 @@ export function buildMatchArtifacts({
     return sum + item.evidence[0].score;
   }, 0);
   const evidenceStrength = requirementSummaries.length
-    ? leadingEvidenceScoreSum / requirementSummaries.length
+    ? requirementSummaries.reduce((sum, item) => {
+        if (!item.evidence.length) {
+          return sum;
+        }
+
+        const supportBonus = Math.min(0.1, 0.05 * Math.max(0, item.evidence.length - 1));
+        return sum + Math.min(1, item.evidence[0].score + supportBonus);
+      }, 0) / requirementSummaries.length
     : 0;
 
   const parsedJson: VacancyParseResult = vacancy.parsed_json || {
@@ -265,6 +330,10 @@ export function buildMatchArtifacts({
     analysis,
     evidenceLinks,
     candidateEvidenceCount: candidateEvidence.length,
+    candidateEvidenceWithStoredEmbeddings,
+    requirementsWithStoredEmbeddings: requirementSummaries.filter(
+      (item) => item.has_stored_embedding,
+    ).length,
   };
 }
 
@@ -323,6 +392,8 @@ export async function runMatchPipeline(
       profileId,
       requirementCount: requirements.length,
       candidateEvidenceCount: result.candidateEvidenceCount,
+      candidateEvidenceWithStoredEmbeddings: result.candidateEvidenceWithStoredEmbeddings,
+      requirementsWithStoredEmbeddings: result.requirementsWithStoredEmbeddings,
     }),
   );
 

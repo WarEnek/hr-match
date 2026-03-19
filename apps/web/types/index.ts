@@ -9,6 +9,7 @@ export type EmbeddingSourceType = "experience_bullet" | "project_bullet" | "vaca
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+export type VectorValue = string | number[] | null;
 
 export interface JsonObject {
   [key: string]: JsonValue | undefined;
@@ -64,6 +65,7 @@ export interface ExperienceBulletRecord {
   domain_tags?: string[];
   result_tags?: string[];
   seniority_tags?: string[];
+  embedding?: VectorValue;
 }
 
 export interface ProjectRecord {
@@ -85,6 +87,7 @@ export interface ProjectBulletRecord {
   tech_tags?: string[];
   domain_tags?: string[];
   result_tags?: string[];
+  embedding?: VectorValue;
 }
 
 export interface CertificationRecord {
@@ -114,6 +117,7 @@ export interface VacancyRequirementRecord {
   label: string;
   normalized_label?: string | null;
   weight?: number;
+  embedding?: VectorValue;
 }
 
 export interface ResumeGenerationRecord {

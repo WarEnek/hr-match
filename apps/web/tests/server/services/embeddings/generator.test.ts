@@ -1,8 +1,10 @@
 import {
   EMBEDDING_DIMENSION,
   buildEmbeddingInput,
+  cosineSimilarity,
   formatVectorLiteral,
   generateDeterministicEmbedding,
+  parseStoredEmbedding,
 } from "~/server/services/embeddings/generator";
 
 describe("embedding generator", () => {
@@ -24,5 +26,15 @@ describe("embedding generator", () => {
     expect(input).toContain("nuxt playwright");
     expect(literal.startsWith("[")).toBe(true);
     expect(literal.endsWith("]")).toBe(true);
+  });
+
+  it("parses stored vectors and computes cosine similarity", () => {
+    const parsed = parseStoredEmbedding("[1,0,0]");
+    const similarity = cosineSimilarity([1, 0, 0], [1, 0, 0]);
+    const oppositeSimilarity = cosineSimilarity([1, 0, 0], [-1, 0, 0]);
+
+    expect(parsed).toEqual([1, 0, 0]);
+    expect(similarity).toBe(1);
+    expect(oppositeSimilarity).toBe(-1);
   });
 });
