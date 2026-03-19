@@ -246,10 +246,16 @@ describe("composeResumeDocument", () => {
 
     expect(documentTree.summary).toContain("proven Nuxt and TypeScript");
     expect(documentTree.skills[0]).toBe("Nuxt");
-    expect(documentTree.experiences[0]?.bullets[0]).toBe(
-      "Built Nuxt 3 applications with TypeScript.",
-    );
-    expect(documentTree.projects[0]?.bullets[0]).toBe("Led a Nuxt migration for a legacy portal.");
+    expect(documentTree.experiences[0]?.bullets[0]).toMatchObject({
+      text: "Built Nuxt 3 applications with TypeScript.",
+      sourceType: "experience_bullet",
+      included: true,
+    });
+    expect(documentTree.projects[0]?.bullets[0]).toMatchObject({
+      text: "Led a Nuxt migration for a legacy portal.",
+      sourceType: "project_bullet",
+      included: true,
+    });
     expect(documentTree.profile.contacts).toContain("jane@example.com");
   });
 

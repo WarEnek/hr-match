@@ -173,6 +173,7 @@ export const resumeGenerateSchema = z.object({
 });
 
 export const documentTreeSchema = z.object({
+  version: z.number().int().optional(),
   profile: z.object({
     fullName: z.string().trim().min(1),
     headline: z.string().nullable(),
@@ -187,7 +188,14 @@ export const documentTreeSchema = z.object({
       roleTitle: z.string().trim().min(1),
       location: z.string().nullable(),
       dateRange: z.string().trim().min(1),
-      bullets: z.array(z.string().trim().min(1)),
+      bullets: z.array(
+        z.object({
+          sourceId: z.string().trim().min(1),
+          sourceType: z.enum(["experience_bullet", "project_bullet"]),
+          text: z.string().trim().min(1),
+          included: z.boolean(),
+        }),
+      ),
     }),
   ),
   projects: z.array(
@@ -195,7 +203,14 @@ export const documentTreeSchema = z.object({
       id: z.string().uuid(),
       title: z.string().trim().min(1),
       description: z.string().trim().min(1),
-      bullets: z.array(z.string().trim().min(1)),
+      bullets: z.array(
+        z.object({
+          sourceId: z.string().trim().min(1),
+          sourceType: z.enum(["experience_bullet", "project_bullet"]),
+          text: z.string().trim().min(1),
+          included: z.boolean(),
+        }),
+      ),
       url: z.string().nullable(),
     }),
   ),

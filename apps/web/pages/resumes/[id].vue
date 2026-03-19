@@ -1,5 +1,12 @@
 <script setup lang="ts">
+import { computed, ref, watchEffect } from "vue";
+
+import { navigateTo, useFetch, useRoute } from "#imports";
+
 import type { MatchAnalysis, ResumeDocumentTree } from "~/types";
+
+import { useAuthStore } from "~/stores/auth";
+import { getIncludedTextCount, normalizeResumeDocumentTree } from "~/utils/resume-document";
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -30,12 +37,20 @@ const exporting = ref(false);
 const saving = ref(false);
 const notice = ref("");
 const editableTitle = ref("");
+const editableDocumentTree = ref<ResumeDocumentTree | null>(null);
 
 watchEffect(() => {
   editableTitle.value = data.value?.resume?.title || "";
+  editableDocumentTree.value = data.value?.resume?.document_tree
+    ? normalizeResumeDocumentTree(data.value.resume.document_tree)
+    : null;
 });
 
 async function saveDraft() {
+  if (!editableDocumentTree.value) {
+    return;
+  }
+
   saving.value = true;
   notice.value = "";
 
@@ -44,7 +59,7 @@ async function saveDraft() {
       method: "PUT",
       body: {
         title: editableTitle.value,
-        document_tree: data.value?.resume?.document_tree,
+        document_tree: editableDocumentTree.value,
       },
     });
     await refresh();
@@ -71,8 +86,39 @@ async function exportPdf() {
   }
 }
 
-const documentTree = computed(() => data.value?.resume?.document_tree as ResumeDocumentTree | null);
+function toggleExperienceBullet(experienceId: string, sourceId: string): void {
+  const experience = editableDocumentTree.value?.experiences.find(
+    (item) => item.id === experienceId,
+  );
+  const bullet = experience?.bullets.find((item) => item.sourceId === sourceId);
+
+  if (!bullet) {
+    return;
+  }
+
+  bullet.included = !bullet.included;
+}
+
+function toggleProjectBullet(projectId: string, sourceId: string): void {
+  const project = editableDocumentTree.value?.projects.find((item) => item.id === projectId);
+  const bullet = project?.bullets.find((item) => item.sourceId === sourceId);
+
+  if (!bullet) {
+    return;
+  }
+
+  bullet.included = !bullet.included;
+}
+
+const documentTree = computed(() => editableDocumentTree.value);
 const analysis = computed(() => data.value?.resume?.analysis_json as MatchAnalysis | null);
+const includedBulletCount = computed(() => {
+  if (!editableDocumentTree.value) {
+    return 0;
+  }
+
+  return getIncludedTextCount(editableDocumentTree.value);
+});
 </script>
 
 <template>
@@ -85,6 +131,9 @@ const analysis = computed(() => data.value?.resume?.analysis_json as MatchAnalys
           <input v-model="editableTitle" type="text" />
         </label>
       </div>
+      <p class="hint" style="margin-top: 0.75rem">
+        Included bullets in draft: {{ includedBulletCount }}
+      </p>
       <div class="actions" style="margin-top: 1rem">
         <button class="button" :disabled="saving" @click="saveDraft">
           {{ saving ? "Saving..." : "Save draft" }}
@@ -114,6 +163,64 @@ const analysis = computed(() => data.value?.resume?.analysis_json as MatchAnalys
           <p class="muted">{{ link.reason }}</p>
         </li>
       </ul>
+    </section>
+
+    <section v-if="documentTree" class="panel">
+      <h2>Included experience bullets</h2>
+      <div class="record-list">
+        <article
+          v-for="experience in documentTree.experiences"
+          :key="experience.id"
+          class="record-card"
+        >
+          <div class="record-header">
+            <strong>{{ experience.roleTitle }} - {{ experience.company }}</strong>
+            <span class="muted">{{ experience.dateRange }}</span>
+          </div>
+          <label
+            v-for="bullet in experience.bullets"
+            :key="`${bullet.sourceType}:${bullet.sourceId}`"
+            class="field"
+          >
+            <span>
+              <input
+                :checked="bullet.included"
+                type="checkbox"
+                style="width: auto; margin-right: 0.5rem"
+                @change="toggleExperienceBullet(experience.id, bullet.sourceId)"
+              />
+              {{ bullet.text }}
+            </span>
+          </label>
+        </article>
+      </div>
+    </section>
+
+    <section v-if="documentTree?.projects.length" class="panel">
+      <h2>Included project bullets</h2>
+      <div class="record-list">
+        <article v-for="project in documentTree.projects" :key="project.id" class="record-card">
+          <div class="record-header">
+            <strong>{{ project.title }}</strong>
+            <span class="muted">{{ project.url || "No URL" }}</span>
+          </div>
+          <label
+            v-for="bullet in project.bullets"
+            :key="`${bullet.sourceType}:${bullet.sourceId}`"
+            class="field"
+          >
+            <span>
+              <input
+                :checked="bullet.included"
+                type="checkbox"
+                style="width: auto; margin-right: 0.5rem"
+                @change="toggleProjectBullet(project.id, bullet.sourceId)"
+              />
+              {{ bullet.text }}
+            </span>
+          </label>
+        </article>
+      </div>
     </section>
 
     <ResumeResumeDocumentView v-if="documentTree" :document-tree="documentTree" />

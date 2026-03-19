@@ -39,8 +39,13 @@ defineProps<{
             <span>{{ experience.dateRange }}</span>
           </div>
           <p v-if="experience.location">{{ experience.location }}</p>
-          <ul>
-            <li v-for="bullet in experience.bullets" :key="bullet">{{ bullet }}</li>
+          <ul v-if="experience.bullets.some((bullet) => bullet.included)">
+            <li
+              v-for="bullet in experience.bullets.filter((item) => item.included)"
+              :key="`${bullet.sourceType}:${bullet.sourceId}`"
+            >
+              {{ bullet.text }}
+            </li>
           </ul>
         </article>
       </div>
@@ -57,8 +62,13 @@ defineProps<{
             }}</a>
           </div>
           <p>{{ project.description }}</p>
-          <ul v-if="project.bullets.length">
-            <li v-for="bullet in project.bullets" :key="bullet">{{ bullet }}</li>
+          <ul v-if="project.bullets.some((bullet) => bullet.included)">
+            <li
+              v-for="bullet in project.bullets.filter((item) => item.included)"
+              :key="`${bullet.sourceType}:${bullet.sourceId}`"
+            >
+              {{ bullet.text }}
+            </li>
           </ul>
         </article>
       </div>

@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
+import { normalizeResumeDocumentTree } from "~/utils/resume-document";
 
 export default defineEventHandler(async (event) => {
   const profile = await requireProfile(event);
@@ -30,7 +31,10 @@ export default defineEventHandler(async (event) => {
   }
 
   return {
-    resume,
+    resume: {
+      ...resume,
+      document_tree: normalizeResumeDocumentTree(resume.document_tree),
+    },
     evidenceLinks,
   };
 });

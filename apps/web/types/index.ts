@@ -6,6 +6,7 @@ export type RequirementType =
   | "soft_signal";
 export type EvidenceSourceType = "experience_bullet" | "project_bullet" | "skill";
 export type EmbeddingSourceType = "experience_bullet" | "project_bullet" | "vacancy_requirement";
+export type ResumeBulletSourceType = "experience_bullet" | "project_bullet";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
@@ -200,6 +201,7 @@ export interface MatchAnalysis {
 }
 
 export interface ResumeDocumentTree {
+  version?: number;
   profile: {
     fullName: string;
     headline: string | null;
@@ -207,21 +209,8 @@ export interface ResumeDocumentTree {
   };
   summary: string;
   skills: string[];
-  experiences: Array<{
-    id: string;
-    company: string;
-    roleTitle: string;
-    location: string | null;
-    dateRange: string;
-    bullets: string[];
-  }>;
-  projects: Array<{
-    id: string;
-    title: string;
-    description: string;
-    bullets: string[];
-    url: string | null;
-  }>;
+  experiences: ResumeDocumentExperience[];
+  projects: ResumeDocumentProject[];
   certifications: Array<{
     id: string;
     name: string;
@@ -230,6 +219,30 @@ export interface ResumeDocumentTree {
   }>;
   education: string[];
   languages: string[];
+}
+
+export interface ResumeDocumentBullet {
+  sourceId: string;
+  sourceType: ResumeBulletSourceType;
+  text: string;
+  included: boolean;
+}
+
+export interface ResumeDocumentExperience {
+  id: string;
+  company: string;
+  roleTitle: string;
+  location: string | null;
+  dateRange: string;
+  bullets: ResumeDocumentBullet[];
+}
+
+export interface ResumeDocumentProject {
+  id: string;
+  title: string;
+  description: string;
+  bullets: ResumeDocumentBullet[];
+  url: string | null;
 }
 
 export interface VacancyListItem {

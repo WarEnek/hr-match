@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
 import { resumeUpdateSchema } from "~/server/utils/schemas";
+import { normalizeResumeDocumentTree } from "~/utils/resume-document";
 
 export default defineEventHandler(async (event) => {
   const profile = await requireProfile(event);
@@ -12,7 +13,7 @@ export default defineEventHandler(async (event) => {
     .from("resume_generations")
     .update({
       title: body.title,
-      document_tree: body.document_tree,
+      document_tree: normalizeResumeDocumentTree(body.document_tree),
     })
     .eq("id", resumeId)
     .eq("profile_id", profile.id)

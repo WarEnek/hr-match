@@ -172,8 +172,13 @@ export async function composeResumeDocument(
         return rightScore - leftScore;
       })
       .slice(0, 4)
-      .map((bullet) => bullet.text_refined || bullet.text_raw)
-      .filter(Boolean);
+      .map((bullet) => ({
+        sourceId: bullet.id,
+        sourceType: "experience_bullet" as const,
+        text: bullet.text_refined || bullet.text_raw || "",
+        included: true,
+      }))
+      .filter((bullet) => bullet.text.trim().length > 0);
 
     return {
       id: experience.id,
@@ -193,8 +198,13 @@ export async function composeResumeDocument(
         return rightScore - leftScore;
       })
       .slice(0, 3)
-      .map((bullet) => bullet.text_refined || bullet.text_raw)
-      .filter(Boolean);
+      .map((bullet) => ({
+        sourceId: bullet.id,
+        sourceType: "project_bullet" as const,
+        text: bullet.text_refined || bullet.text_raw || "",
+        included: true,
+      }))
+      .filter((bullet) => bullet.text.trim().length > 0);
 
     return {
       id: project.id,
@@ -215,6 +225,7 @@ export async function composeResumeDocument(
   ].filter((contact): contact is string => Boolean(contact));
 
   const documentTree = documentTreeSchema.parse({
+    version: 2,
     profile: {
       fullName: profile?.full_name || "Unnamed Candidate",
       headline: profile?.headline || null,
