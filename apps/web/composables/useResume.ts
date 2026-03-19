@@ -1,12 +1,14 @@
+import type { ResumeListItem } from "~/types";
+
 export function useResume() {
-  const resumes = useState<any[]>("resume-list", () => []);
+  const resumes = useState<ResumeListItem[]>("resume-list", () => []);
   const pending = useState<boolean>("resume-pending", () => false);
 
   async function refresh() {
     pending.value = true;
 
     try {
-      const response = await $fetch<{ resumes: any[] }>("/api/resume");
+      const response = await $fetch<{ resumes: ResumeListItem[] }>("/api/resume");
       resumes.value = response.resumes;
       return response.resumes;
     } finally {

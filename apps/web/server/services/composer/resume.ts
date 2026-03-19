@@ -1,5 +1,7 @@
 import type { H3Event } from "h3";
 
+import type { EvidenceSourceType, MatchAnalysis, MatchEvidence, ResumeDocumentTree } from "~/types";
+
 import { requestStructuredCompletion } from "~/server/services/novita/client";
 import { getResolvedAiSettings } from "~/server/services/novita/settings";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
@@ -16,9 +18,79 @@ function formatDateRange(startDate: string | null, endDate: string | null, isCur
   return `${start} - ${end}`;
 }
 
-function fallbackSummary(profile: any, vacancy: any, evidenceSnippets: string[]) {
-  const headline = profile.headline || profile.summary_default || "Candidate profile available.";
-  const target = vacancy.title
+interface ComposeProfile {
+  id: string;
+  full_name: string;
+  headline: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  linkedin_url: string | null;
+  github_url: string | null;
+  website_url: string | null;
+  summary_default: string | null;
+}
+
+interface ComposeVacancy {
+  id: string;
+  title: string | null;
+  company: string | null;
+}
+
+interface ComposeSkill {
+  id: string;
+  name: string;
+}
+
+interface ComposeExperience {
+  id: string;
+  company: string;
+  role_title: string;
+  location: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+}
+
+interface ComposeExperienceBullet {
+  id: string;
+  experience_id: string;
+  text_raw: string | null;
+  text_refined: string | null;
+}
+
+interface ComposeProject {
+  id: string;
+  title: string;
+  description: string;
+  url: string | null;
+}
+
+interface ComposeProjectBullet {
+  id: string;
+  project_id: string;
+  text_raw: string | null;
+  text_refined: string | null;
+}
+
+interface ComposeCertification {
+  id: string;
+  name: string;
+  issuer: string | null;
+  issued_at: string | null;
+}
+
+interface ComposeEvidenceLink extends MatchEvidence {
+  source_type: EvidenceSourceType;
+}
+
+function fallbackSummary(
+  profile: ComposeProfile | null,
+  vacancy: ComposeVacancy | null,
+  evidenceSnippets: string[],
+) {
+  const headline = profile?.headline || profile?.summary_default || "Candidate profile available.";
+  const target = vacancy?.title
     ? `Target role: ${vacancy.title}.`
     : "Target role aligned with the vacancy.";
   const evidence = evidenceSnippets.slice(0, 3).join(" ");
@@ -31,26 +103,20 @@ export async function composeResumeDocument(
     profileId: string;
     userId: string;
     vacancyId: string;
-    analysis: any;
-    evidenceLinks: Array<{
-      requirement_id: string;
-      source_type: string;
-      source_id: string;
-      score: number;
-      reason: string;
-    }>;
+    analysis: MatchAnalysis;
+    evidenceLinks: ComposeEvidenceLink[];
   },
-) {
+): Promise<ResumeDocumentTree> {
   const supabase = createSupabaseServerClient(event);
   const [
-    { data: profile },
-    { data: vacancy },
-    { data: skills },
-    { data: experiences },
-    { data: experienceBullets },
-    { data: projects },
-    { data: projectBullets },
-    { data: certifications },
+    profileResult,
+    vacancyResult,
+    skillsResult,
+    experiencesResult,
+    experienceBulletsResult,
+    projectsResult,
+    projectBulletsResult,
+    certificationsResult,
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", options.profileId).maybeSingle(),
     supabase.from("vacancies").select("*").eq("id", options.vacancyId).maybeSingle(),
@@ -73,6 +139,15 @@ export async function composeResumeDocument(
       .eq("profile_id", options.profileId)
       .order("issued_at", { ascending: false }),
   ]);
+
+  const profile = profileResult.data as ComposeProfile | null;
+  const vacancy = vacancyResult.data as ComposeVacancy | null;
+  const skills = (skillsResult.data || []) as ComposeSkill[];
+  const experiences = (experiencesResult.data || []) as ComposeExperience[];
+  const experienceBullets = (experienceBulletsResult.data || []) as ComposeExperienceBullet[];
+  const projects = (projectsResult.data || []) as ComposeProject[];
+  const projectBullets = (projectBulletsResult.data || []) as ComposeProjectBullet[];
+  const certifications = (certificationsResult.data || []) as ComposeCertification[];
 
   const evidenceScoreMap = new Map(
     options.evidenceLinks.map((link) => [`${link.source_type}:${link.source_id}`, link.score]),
@@ -120,30 +195,30 @@ export async function composeResumeDocument(
     );
   }
 
-  const sortedSkills = [...(skills || [])]
-    .sort((left: any, right: any) => {
+  const sortedSkills = [...skills]
+    .sort((left, right) => {
       const leftScore = evidenceScoreMap.get(`skill:${left.id}`) || 0;
       const rightScore = evidenceScoreMap.get(`skill:${right.id}`) || 0;
       return rightScore - leftScore;
     })
     .slice(0, 12)
-    .map((skill: any) => skill.name);
+    .map((skill) => skill.name);
 
-  const groupedExperienceBullets = new Map<string, any[]>();
-  for (const bullet of experienceBullets || []) {
+  const groupedExperienceBullets = new Map<string, ComposeExperienceBullet[]>();
+  for (const bullet of experienceBullets) {
     const group = groupedExperienceBullets.get(bullet.experience_id) || [];
     group.push(bullet);
     groupedExperienceBullets.set(bullet.experience_id, group);
   }
 
-  const groupedProjectBullets = new Map<string, any[]>();
-  for (const bullet of projectBullets || []) {
+  const groupedProjectBullets = new Map<string, ComposeProjectBullet[]>();
+  for (const bullet of projectBullets) {
     const group = groupedProjectBullets.get(bullet.project_id) || [];
     group.push(bullet);
     groupedProjectBullets.set(bullet.project_id, group);
   }
 
-  const resumeExperiences = (experiences || []).slice(0, 6).map((experience: any) => {
+  const resumeExperiences = experiences.slice(0, 6).map((experience) => {
     const bullets = [...(groupedExperienceBullets.get(experience.id) || [])]
       .sort((left, right) => {
         const leftScore = evidenceScoreMap.get(`experience_bullet:${left.id}`) || 0;
@@ -164,7 +239,7 @@ export async function composeResumeDocument(
     };
   });
 
-  const resumeProjects = (projects || []).slice(0, 4).map((project: any) => {
+  const resumeProjects = projects.slice(0, 4).map((project) => {
     const bullets = [...(groupedProjectBullets.get(project.id) || [])]
       .sort((left, right) => {
         const leftScore = evidenceScoreMap.get(`project_bullet:${left.id}`) || 0;
@@ -185,13 +260,13 @@ export async function composeResumeDocument(
   });
 
   const contacts = [
-    profile?.email,
-    profile?.phone,
-    profile?.location,
-    profile?.linkedin_url,
-    profile?.github_url,
-    profile?.website_url,
-  ].filter(Boolean);
+    profile?.email ?? null,
+    profile?.phone ?? null,
+    profile?.location ?? null,
+    profile?.linkedin_url ?? null,
+    profile?.github_url ?? null,
+    profile?.website_url ?? null,
+  ].filter((contact): contact is string => Boolean(contact));
 
   const documentTree = documentTreeSchema.parse({
     profile: {
@@ -203,7 +278,7 @@ export async function composeResumeDocument(
     skills: sortedSkills,
     experiences: resumeExperiences,
     projects: resumeProjects,
-    certifications: (certifications || []).slice(0, 6).map((item: any) => ({
+    certifications: certifications.slice(0, 6).map((item) => ({
       id: item.id,
       name: item.name,
       issuer: item.issuer,

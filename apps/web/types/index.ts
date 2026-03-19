@@ -90,3 +90,19 @@ export interface ResumeDocumentTree {
   education: string[];
   languages: string[];
 }
+
+export interface VacancyListItem {
+  id: string;
+  title: string | null;
+  company: string | null;
+  status?: string;
+  updated_at?: string;
+}
+
+export interface ResumeListItem {
+  id: string;
+  title: string;
+  status?: string;
+  score: number | null;
+  updated_at?: string;
+}

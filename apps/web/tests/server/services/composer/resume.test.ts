@@ -1,3 +1,6 @@
+import type { H3Event } from "h3";
+
+import type { MatchAnalysis } from "~/types";
 import { composeResumeDocument } from "~/server/services/composer/resume";
 
 const {
@@ -68,6 +71,22 @@ function createSupabaseMock(tableData: Record<string, unknown>) {
 }
 
 describe("composeResumeDocument", () => {
+  const event = {
+    context: {},
+    path: "/api/resume/generate",
+    method: "POST",
+  } as unknown as H3Event;
+  const analysis: MatchAnalysis = {
+    overall_score: 0.87,
+    must_have_coverage: 0.8,
+    semantic_similarity: 0.75,
+    keyword_coverage: 0.7,
+    evidence_strength: 0.85,
+    domain_seniority_fit: 0.9,
+    penalties: [],
+    requirements: [],
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -165,38 +184,35 @@ describe("composeResumeDocument", () => {
         "Senior frontend engineer with proven Nuxt and TypeScript delivery experience for customer-facing platforms.",
     });
 
-    const documentTree = await composeResumeDocument(
-      { context: {}, path: "/api/resume/generate", method: "POST" } as any,
-      {
-        profileId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-        userId: "99999999-9999-4999-8999-999999999999",
-        vacancyId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-        analysis: {},
-        evidenceLinks: [
-          {
-            requirement_id: "req-1",
-            source_type: "skill",
-            source_id: "22222222-2222-4222-8222-222222222222",
-            score: 0.95,
-            reason: "Nuxt is directly required.",
-          },
-          {
-            requirement_id: "req-2",
-            source_type: "experience_bullet",
-            source_id: "44444444-4444-4444-8444-444444444444",
-            score: 0.91,
-            reason: "Nuxt 3 delivery is proven.",
-          },
-          {
-            requirement_id: "req-3",
-            source_type: "project_bullet",
-            source_id: "77777777-7777-4777-8777-777777777777",
-            score: 0.89,
-            reason: "Migration experience is relevant.",
-          },
-        ],
-      },
-    );
+    const documentTree = await composeResumeDocument(event, {
+      profileId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      userId: "99999999-9999-4999-8999-999999999999",
+      vacancyId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      analysis,
+      evidenceLinks: [
+        {
+          requirement_id: "req-1",
+          source_type: "skill",
+          source_id: "22222222-2222-4222-8222-222222222222",
+          score: 0.95,
+          reason: "Nuxt is directly required.",
+        },
+        {
+          requirement_id: "req-2",
+          source_type: "experience_bullet",
+          source_id: "44444444-4444-4444-8444-444444444444",
+          score: 0.91,
+          reason: "Nuxt 3 delivery is proven.",
+        },
+        {
+          requirement_id: "req-3",
+          source_type: "project_bullet",
+          source_id: "77777777-7777-4777-8777-777777777777",
+          score: 0.89,
+          reason: "Migration experience is relevant.",
+        },
+      ],
+    });
 
     expect(documentTree.summary).toContain("proven Nuxt and TypeScript");
     expect(documentTree.skills[0]).toBe("Nuxt");
@@ -210,24 +226,21 @@ describe("composeResumeDocument", () => {
   it("falls back to deterministic summary when the AI request fails", async () => {
     requestStructuredCompletionMock.mockRejectedValue(new Error("provider unavailable"));
 
-    const documentTree = await composeResumeDocument(
-      { context: {}, path: "/api/resume/generate", method: "POST" } as any,
-      {
-        profileId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-        userId: "99999999-9999-4999-8999-999999999999",
-        vacancyId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-        analysis: {},
-        evidenceLinks: [
-          {
-            requirement_id: "req-1",
-            source_type: "experience_bullet",
-            source_id: "44444444-4444-4444-8444-444444444444",
-            score: 0.91,
-            reason: "Nuxt 3 delivery is proven.",
-          },
-        ],
-      },
-    );
+    const documentTree = await composeResumeDocument(event, {
+      profileId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      userId: "99999999-9999-4999-8999-999999999999",
+      vacancyId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      analysis,
+      evidenceLinks: [
+        {
+          requirement_id: "req-1",
+          source_type: "experience_bullet",
+          source_id: "44444444-4444-4444-8444-444444444444",
+          score: 0.91,
+          reason: "Nuxt 3 delivery is proven.",
+        },
+      ],
+    });
 
     expect(documentTree.summary).toContain("Senior Frontend Engineer");
     expect(documentTree.summary).toContain("Target role: Staff Frontend Engineer.");

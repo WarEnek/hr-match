@@ -1,3 +1,5 @@
+import type { H3Event } from "h3";
+
 import { clearRateLimitStore, enforceRateLimit } from "~/server/utils/rate-limit";
 
 function createEvent(overrides?: { userId?: string; forwardedFor?: string }) {
@@ -12,7 +14,7 @@ function createEvent(overrides?: { userId?: string; forwardedFor?: string }) {
         },
       },
     },
-  } as any;
+  } as unknown as H3Event;
 }
 
 describe("rate limiting", () => {

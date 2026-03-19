@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { H3Event } from "h3";
 
 import { parseVacancyText } from "~/server/services/parser/vacancy-parser";
 import { requestStructuredCompletion } from "~/server/services/novita/client";
@@ -22,6 +23,8 @@ vi.mock("~/server/utils/logger", () => ({
 }));
 
 describe("parseVacancyText", () => {
+  const event = { context: {}, path: "/api/test", method: "POST" } as unknown as H3Event;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -49,11 +52,7 @@ describe("parseVacancyText", () => {
         soft_signals: ["Ownership"],
       });
 
-    const result = await parseVacancyText(
-      { context: {}, path: "/api/test", method: "POST" } as any,
-      "user-1",
-      "Vacancy body",
-    );
+    const result = await parseVacancyText(event, "user-1", "Vacancy body");
 
     expect(requestStructuredCompletion).toHaveBeenCalledTimes(2);
     expect(result.title).toBe("Frontend Engineer");
@@ -63,13 +62,7 @@ describe("parseVacancyText", () => {
   it("throws a 502 application error after exhausting retries", async () => {
     vi.mocked(requestStructuredCompletion).mockRejectedValue(new Error("provider down"));
 
-    await expect(
-      parseVacancyText(
-        { context: {}, path: "/api/test", method: "POST" } as any,
-        "user-1",
-        "Vacancy body",
-      ),
-    ).rejects.toMatchObject({
+    await expect(parseVacancyText(event, "user-1", "Vacancy body")).rejects.toMatchObject({
       statusCode: 502,
       statusMessage: "Vacancy parsing failed after retry.",
     });

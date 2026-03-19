@@ -1,3 +1,5 @@
+import type { H3Event } from "h3";
+
 const { launchMock, createSupabaseAdminClientMock, infoLoggerMock, errorLoggerMock } = vi.hoisted(
   () => ({
     launchMock: vi.fn(),
@@ -82,7 +84,7 @@ describe("exportResumeToPdf", () => {
           },
         },
       },
-    } as any;
+    } as unknown as H3Event;
 
     const result = await exportResumeToPdf(
       event,
@@ -145,7 +147,7 @@ describe("exportResumeToPdf", () => {
           path: "/api/export/pdf/resume-1",
           method: "POST",
           node: { req: { headers: {} } },
-        } as any,
+        } as unknown as H3Event,
         "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
         "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       ),
