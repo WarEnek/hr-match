@@ -138,10 +138,6 @@ function finalizeMatchArtifacts(
       mustHaveRequirements.length
     : 0;
 
-  const allCoverageScores = requirementSummaries.map((item) => item.coverage_score);
-  const averageCoverage = allCoverageScores.length
-    ? allCoverageScores.reduce((sum, value) => sum + value, 0) / allCoverageScores.length
-    : 0;
   const keywordCoverage = requirementSummaries.length
     ? requirementSummaries.reduce((sum, item) => sum + item.keyword_top_score, 0) /
       requirementSummaries.length
