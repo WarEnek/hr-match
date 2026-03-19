@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  app:
+    image: hr-match-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_PUBLIC_APP_URL: ${NUXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NUXT_SESSION_SECRET: ${NUXT_SESSION_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      NOVITA_API_KEY: ${NOVITA_API_KEY:-}
+      NOVITA_BASE_URL: ${NOVITA_BASE_URL:-https://api.novita.ai/openai}
+      NOVITA_MODEL: ${NOVITA_MODEL:-google/gemma-3-12b-it}
+      PDF_STORAGE_BUCKET: ${PDF_STORAGE_BUCKET:-resumes}
+      PDF_BASE_PATH: ${PDF_BASE_PATH:-exports}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((response) => { if (!response.ok) throw new Error('unhealthy') }).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
