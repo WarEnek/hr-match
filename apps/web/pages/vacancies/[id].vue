@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { MatchAnalysis, VacancyParseResult } from "~/types";
 
+import { computed, ref } from "vue";
+
+import { navigateTo, useFetch, useRoute } from "#imports";
+
+import { useAuthStore } from "~/stores/auth";
+
 const route = useRoute();
 const auth = useAuthStore();
 

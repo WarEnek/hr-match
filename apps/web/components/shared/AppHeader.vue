@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+
+import { navigateTo, useRoute } from "#imports";
+
+import { useAuthStore } from "~/stores/auth";
+
 const auth = useAuthStore();
 const route = useRoute();
 const loading = ref(false);

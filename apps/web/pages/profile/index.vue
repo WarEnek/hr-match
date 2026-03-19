@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { reactive, ref, watchEffect } from "vue";
+
+import { navigateTo, useFetch } from "#imports";
+
+import { useAuthStore } from "~/stores/auth";
+
 const auth = useAuthStore();
 
 if (!auth.initialized) {

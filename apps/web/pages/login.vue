@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { computed, reactive, ref } from "vue";
+
+import { navigateTo } from "#imports";
+
+import { useAuthStore } from "~/stores/auth";
+
 const auth = useAuthStore();
 const mode = ref<"sign_in" | "sign_up">("sign_in");
 const form = reactive({
