@@ -24,6 +24,14 @@ export default defineEventHandler(async (event) => {
     throw createAppError(400, response.error.message);
   }
 
+  appLogger.info(
+    "Supabase auth session mutation succeeded.",
+    buildRequestLogContext(event, {
+      mode: body.mode,
+      userId: response.data.user?.id || null,
+    }),
+  );
+
   return {
     user: response.data.user,
   };

@@ -3,6 +3,7 @@ import { createResumePdfSignedUrl } from "~/server/services/pdf/storage";
 import { createSupabaseServerClient } from "~/server/services/supabase/server";
 import { requireProfile, requireUser } from "~/server/utils/auth";
 import { createAppError } from "~/server/utils/errors";
+import { appLogger, buildRequestLogContext } from "~/server/utils/logger";
 import { enforceRateLimit } from "~/server/utils/rate-limit";
 
 export default defineEventHandler(async (event) => {
@@ -36,6 +37,15 @@ export default defineEventHandler(async (event) => {
     throw createAppError(500, "Failed to create export job.", { cause: jobError?.message });
   }
 
+  appLogger.info(
+    "Export job created.",
+    buildRequestLogContext(event, {
+      resumeGenerationId: resumeId,
+      exportJobId: job.id,
+      userId: user.id,
+    }),
+  );
+
   try {
     const { pdfPath } = await exportResumeToPdf(event, resumeId, user.id);
     const pdfUrl = await createResumePdfSignedUrl(pdfPath);
@@ -44,6 +54,15 @@ export default defineEventHandler(async (event) => {
       .update({ pdf_path: pdfPath, status: "exported" })
       .eq("id", resumeId);
     await supabase.from("export_jobs").update({ status: "completed" }).eq("id", job.id);
+
+    appLogger.info(
+      "Export job completed.",
+      buildRequestLogContext(event, {
+        resumeGenerationId: resumeId,
+        exportJobId: job.id,
+        pdfPath,
+      }),
+    );
 
     return {
       ok: true,
@@ -59,6 +78,15 @@ export default defineEventHandler(async (event) => {
         error_message: error instanceof Error ? error.message : "Unknown export error",
       })
       .eq("id", job.id);
+
+    appLogger.warn(
+      "Export job failed.",
+      buildRequestLogContext(event, {
+        resumeGenerationId: resumeId,
+        exportJobId: job.id,
+        error: error instanceof Error ? error.message : "Unknown export error",
+      }),
+    );
 
     throw error;
   }
